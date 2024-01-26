@@ -74,7 +74,7 @@ class TestTlexer(unittest.TestCase):
             tlexer.SqlToken(':sno', True) ]
         self._vqueries([q2], e2)
 
-    def test_string(self):
+    def test_strings(self):
         query = "insert into suppliers (sno, sname) values ('s1', ':starts_with_colon')"
         expected = [ tlexer.SqlToken('insert', False),
             tlexer.SqlToken(' ', False), tlexer.SqlToken('into', False),
@@ -89,6 +89,36 @@ class TestTlexer(unittest.TestCase):
             tlexer.SqlToken("':starts_with_colon'", False),
             tlexer.SqlToken(')', False) ]
         self._vqueries([query], expected)
+        q2 = "insert into suppliers (sno, sname) values (en_US's1', en_CA':starts_with_colon')"
+        e2 = [ tlexer.SqlToken('insert', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('into', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('suppliers', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('(', False),
+            tlexer.SqlToken('sno', False), tlexer.SqlToken(',', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('sname', False),
+            tlexer.SqlToken(')', False), tlexer.SqlToken(' ', False),
+            tlexer.SqlToken('values', False), tlexer.SqlToken(' ', False),
+            tlexer.SqlToken('(', False), tlexer.SqlToken("en_US's1'", False),
+            tlexer.SqlToken(',', False), tlexer.SqlToken(' ', False),
+            tlexer.SqlToken("en_CA':starts_with_colon'", False),
+            tlexer.SqlToken(')', False) ]
+        self._vqueries([q2], e2)
+
+    def test_quoted_idents(self):
+        q1 = "select * from `suppliers`"
+        e1 = [ tlexer.SqlToken( 'select',  False),
+            tlexer.SqlToken( ' ',  False), tlexer.SqlToken( '*',  False),
+            tlexer.SqlToken( ' ',  False), tlexer.SqlToken( 'from',  False),
+            tlexer.SqlToken( ' ',  False),
+            tlexer.SqlToken( '`suppliers`',  False) ]
+        self._vqueries([q1], e1)
+        q2 = 'select * from "suppliers"'
+        e2 = [ tlexer.SqlToken( 'select',  False),
+            tlexer.SqlToken( ' ',  False), tlexer.SqlToken( '*',  False),
+            tlexer.SqlToken( ' ',  False), tlexer.SqlToken( 'from',  False),
+            tlexer.SqlToken( ' ',  False),
+            tlexer.SqlToken( '"suppliers"',  False) ]
+        self._vqueries([q2], e2)
 
     def _mktokens(self, seq, is_param=False):
         return [ tlexer.SqlToken(x, is_param) for x in seq ]

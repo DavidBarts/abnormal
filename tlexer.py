@@ -32,8 +32,6 @@ t_ident = r'\w+|"(\\.|""|[^"])*"|`(\\.|``|[^`])*`'
 t_param = r':\w+'
 t_multiop = r'<>|<=|>=|\|\||\.\.|!='
 t_special = r'["%\&\'\(\)\*\+,-\.\/;<=>\?_\|\[\]]'
-t_pstring = r'\'(\\.|\'\'|[^\'])*\''
-t_astring = r'\w+\'(\\.|\'\'|[^\'])*\''
 
 # C l a s s e s
 
@@ -50,16 +48,32 @@ def t_white(t):
     r'\s+'
     t.value = " "
     return t
-    
-# Defining a comment with a dummy function forces comments to be
-# recognized at a higher priority than any token defined via a string.
+
+# Defining these trivial tokens with dummy functions even though a string
+# lets us impose our own priority on things. If strings are used, PLY imposes
+# its own priority, based on crude regular expression length, which often
+# loses.
+
 def t_comment(t):
     r'--.*?(\n|$)|\/\*.*?\*\/'
     return t
 
+def t_pstring(t):
+    r'\'(\\.|\'\'|[^\'])*\''
+    return t
+
+def t_astring(t):
+    r'\w+\'(\\.|\'\'|[^\'])*\''
+    return t
+
+# PLY requires we define this one.
+
 def t_error(t):
     offset = t.lexer.lexpos - len(t.value)
     raise Error(f"bad SQL at offset {offset}")
+
+# This is the sole function that is intended to be called from other
+# modules.
 
 def tlexer(sql):
     """
