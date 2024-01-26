@@ -41,7 +41,7 @@ class TestTlexer(unittest.TestCase):
             tlexer.SqlToken(" ", False), tlexer.SqlToken("from", False),
             tlexer.SqlToken(" ", False), tlexer.SqlToken("suppliers", False) ]
         self._vqueries(queries, expected)
-        
+
     def test_param(self):
         "Test :parameters."
         q1 = "insert into suppliers (sno, sname, status, city) values (:sno, :sname, :status, :city)"
@@ -73,7 +73,23 @@ class TestTlexer(unittest.TestCase):
             tlexer.SqlToken('=', False), tlexer.SqlToken(' ', False),
             tlexer.SqlToken(':sno', True) ]
         self._vqueries([q2], e2)
-    
+
+    def test_string(self):
+        query = "insert into suppliers (sno, sname) values ('s1', ':starts_with_colon')"
+        expected = [ tlexer.SqlToken('insert', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('into', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('suppliers', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('(', False),
+            tlexer.SqlToken('sno', False), tlexer.SqlToken(',', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('sname', False),
+            tlexer.SqlToken(')', False), tlexer.SqlToken(' ', False),
+            tlexer.SqlToken('values', False), tlexer.SqlToken(' ', False),
+            tlexer.SqlToken('(', False), tlexer.SqlToken("'s1'", False),
+            tlexer.SqlToken(',', False), tlexer.SqlToken(' ', False),
+            tlexer.SqlToken("':starts_with_colon'", False),
+            tlexer.SqlToken(')', False) ]
+        self._vqueries([query], expected)
+
     def _mktokens(self, seq, is_param=False):
         return [ tlexer.SqlToken(x, is_param) for x in seq ]
 

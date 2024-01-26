@@ -1,0 +1,7 @@
+syntax: glob
+
+*~
+*.bak
+*.pyc
+*.pyo
+__pycache__
