@@ -104,6 +104,22 @@ class TestTlexer(unittest.TestCase):
             tlexer.SqlToken(')', False) ]
         self._vqueries([q2], e2)
 
+    def test_strings_quotes(self):
+        query = r"select * from suppliers where sname = 'O''Rourke' || sname = 'O\'Brien'"
+        expected = [ tlexer.SqlToken('select', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('*', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('from', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('suppliers', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('where', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('sname', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('=', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken("'O''Rourke'", False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('||', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('sname', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('=', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken("'O\\'Brien'", False) ]
+        self._vqueries([query], expected)
+
     def test_quoted_idents(self):
         q1 = "select * from `suppliers`"
         e1 = [ tlexer.SqlToken( 'select',  False),
@@ -112,13 +128,37 @@ class TestTlexer(unittest.TestCase):
             tlexer.SqlToken( ' ',  False),
             tlexer.SqlToken( '`suppliers`',  False) ]
         self._vqueries([q1], e1)
-        q2 = 'select * from "suppliers"'
-        e2 = [ tlexer.SqlToken( 'select',  False),
+        q2 = r"select * from ```suppliers\``"
+        e2 = e1
+        e2[-1].value = r"```suppliers\``"
+        self._vqueries([q2], e2)
+        q3 = 'select * from "suppliers"'
+        e3 = [ tlexer.SqlToken( 'select',  False),
             tlexer.SqlToken( ' ',  False), tlexer.SqlToken( '*',  False),
             tlexer.SqlToken( ' ',  False), tlexer.SqlToken( 'from',  False),
             tlexer.SqlToken( ' ',  False),
             tlexer.SqlToken( '"suppliers"',  False) ]
-        self._vqueries([q2], e2)
+        self._vqueries([q3], e3)
+        q4 = r'select * from "\"suppliers"""'
+        e4 = e3
+        e4[-1].value = r'"\"suppliers"""'
+        self._vqueries([q4], e4)
+
+    def test_multiop(self):
+        query = "select * from suppliers where sname <> 'O''Rourke' || sname <= 'O''Brien'"
+        expected = [ tlexer.SqlToken('select', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('*', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('from', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('suppliers', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('where', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('sname', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('<>', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken("'O''Rourke'", False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('||', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('sname', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken('<=', False),
+            tlexer.SqlToken(' ', False), tlexer.SqlToken("'O''Brien'", False)]
+        self._vqueries([query], expected)
 
     def _mktokens(self, seq, is_param=False):
         return [ tlexer.SqlToken(x, is_param) for x in seq ]

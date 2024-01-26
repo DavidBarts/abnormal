@@ -30,7 +30,6 @@ tokens = (
 # Simple tokens
 t_ident = r'\w+|"(\\.|""|[^"])*"|`(\\.|``|[^`])*`'
 t_param = r':\w+'
-t_multiop = r'<>|<=|>=|\|\||\.\.|!='
 t_special = r'["%\&\'\(\)\*\+,-\.\/;<=>\?_\|\[\]]'
 
 # C l a s s e s
@@ -64,6 +63,10 @@ def t_pstring(t):
 
 def t_astring(t):
     r'\w+\'(\\.|\'\'|[^\'])*\''
+    return t
+
+def t_multiop(t):
+    r'<>|<=|>=|\|\||\.\.|!='
     return t
 
 # PLY requires we define this one.
