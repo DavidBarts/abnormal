@@ -83,6 +83,17 @@ class TestTodb(unittest.TestCase):
         self.assertRaises(AttributeError, todb.convert, query, _STDOBJ, 'qmark')
         self.assertRaises(KeyError, todb.convert, query, _STDREC, 'qmark')
 
+    def test_caching(self):
+        query = "select * from parts where pno = :pno"
+        pno = "p1"
+        before = len(todb._qcache)
+        result1 = todb.convert(query, locals(), 'qmark')
+        after = len(todb._qcache)
+        self.assertGreater(after, before)
+        result2 = todb.convert(query, locals(), 'qmark')
+        self.assertEqual(len(todb._qcache), after)
+        self.assertEqual(result1, result2)
+
 # M a i n   P r o g r a m
 
 if __name__ == '__main__':
