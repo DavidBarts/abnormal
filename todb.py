@@ -1,17 +1,11 @@
 # Helpers for sending data to the database.
+# TODO: implement caching (pass paramstyle to all but possibly _numeric).
 
 # I m p o r t s
 
 from collections.abc import Mapping
 
 from tlexer import SqlToken, tlexer
-
-# C l a s s e s
-
-class ConversionResult:
-    def __init__(self, rquery, params):
-        self.query = ''.join(rquery)
-        self.params = params
 
 # F u n c t i o n s
 
@@ -28,7 +22,7 @@ def _positional(query, params, repl):
             rparams.append(_getparam(params, _getname(token.value)))
         else:
             rquery.append(token.value)
-    return ConversionResult(rquery, rparams)
+    return _mktuple(rquery, rparams)
 
 # XXX - PEP0249 never explicitly mentions it, but the parameters in this
 # style apparently use 1-based indexing. See:
@@ -46,7 +40,7 @@ def _numeric(query, params):
             rquery.append(':' + index[name])
         else:
             rquery.append(token.value)
-    return ConversionResult(rquery, rparams)
+    return _mktuple(rquery, rparams)
 
 def _named(query, params, prefix, suffix):
     rquery = []
@@ -59,7 +53,7 @@ def _named(query, params, prefix, suffix):
             rquery.append(prefix + name + suffix)
         else:
             rquery.append(token.value)
-    return ConversionResult(rquery, rparams)
+    return _mktuple(rquery, rparams)
 
 def _getname(cname):
     assert cname.startswith(':')
@@ -70,6 +64,9 @@ def _getparam(params, name):
         return params[name]
     else:
         return getattr(params, name)
+
+def _mktuple(rquery, params):
+    return (''.join(rquery), params)
 
 # XXX - Can only be defined after all internal functions are fully defined.
 _DISPATCH = {
