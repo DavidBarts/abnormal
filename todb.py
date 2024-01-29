@@ -5,7 +5,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from tlexer import SqlToken, tlexer
+from .tlexer import SqlToken, tlexer
 
 # V a r i a b l e s
 

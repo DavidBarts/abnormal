@@ -9,7 +9,8 @@
 
 from ply import lex
 from dataclasses import dataclass
-from exceptions import Error
+
+from .exceptions import Error
 
 # V a r i a b l e s
 
