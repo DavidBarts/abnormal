@@ -106,7 +106,8 @@ def _to_list(accum, params, name):
     accum.append(_getparam(params, name))
 
 def _to_dict(accum, params, name):
-    accum[name] = _getparam(params, name)
+    if name not in accum:
+        accum[name] = _getparam(params, name)
 
 # XXX - Can only be defined after all internal functions are fully defined.
 
