@@ -8,14 +8,10 @@ then
     1>&2 echo "$myname: src directory not found"
     exit 2
 fi
-
-if [ ! -L abnormal ]
-then
-    ln -s src abnormal || exit 2
-fi
+export PYTHONPATH="$here/src"
 
 for i in tests/test_*.py
 do
     echo '***' "$i"
-    env PYTHONPATH="$here" python3 "$i" || exit 1
+    python3 "$i" || exit 1
 done
