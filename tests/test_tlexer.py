@@ -1,9 +1,7 @@
 # I m p o r t s
 
-import tlexer
+import abnormal.tlexer as tlexer
 import unittest
-
-# V a r i a b l e s
 
 # T e s t s
 
