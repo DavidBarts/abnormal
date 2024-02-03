@@ -41,7 +41,7 @@ class Cursor:
 
     def execute(self, operation, params={}):
         self.raw.execute(*convert(operation, params, self.parent.paramstyle))
-        self._colnames = [ x[0] for x in self.raw.description ]
+        self._colnames = [ x[0].lower() for x in self.raw.description ]
         return self
 
     # executemany not supported (for now)
