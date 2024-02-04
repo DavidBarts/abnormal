@@ -67,6 +67,10 @@ class Cursor:
 
     def _into(self, target):
         row = self.raw.fetchone()
+        # XXX - this test is ugly, but it is the easiest way to make something
+        # be concise on the user end.
+        if target == sequence:
+            return row
         if row is None:
             return None
         kwargs = {}
@@ -86,3 +90,17 @@ def connect(mod, *args, **kwargs):
 def mapping(**kwargs):
     "For returning a mapping with .into()"
     return kwargs
+
+def scalar(**kwargs):
+    "For returning a 1-column row as a scalar with .into()"
+    ncols = len(kwargs)
+    if ncols == 1:
+        for entry in kwargs.values():
+            return entry
+    else:
+        raise UnexpectedResultError(f"unexpected column count of {ncols}")
+
+def sequence(**kwargs):
+    "For returning a row as a sequence."
+    # This should never be called directly; it is merely detected.
+    raise NotImplementedError("sequence should never be called directly")
