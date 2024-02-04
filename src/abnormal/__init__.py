@@ -27,10 +27,15 @@ class Connection:
     def execute(self, query, params={}):
         return self.cursor().execute(query, params)
 
+    def executemany(self, query, seq):
+        cursor = self.cursor()
+        cursor.executemany(query, seq)
+        return cursor
+
 class Cursor:
-    def __init__(self, raw, parent):
+    def __init__(self, raw, connection):
         self.raw = raw
-        self.parent = parent
+        self.connection = connection
         self._colnames = None
 
     def callproc(self, procname, params):
@@ -40,14 +45,19 @@ class Cursor:
         self.raw.close()
 
     def execute(self, operation, params={}):
-        self.raw.execute(*convert(operation, params, self.parent.paramstyle))
+        self.raw.execute(*convert(operation, params, self.connection.paramstyle))
         if self.raw.description is None:
             self._colnames = []
         else:
             self._colnames = [ x[0].lower() for x in self.raw.description ]
         return self
 
-    # executemany not supported (for now)
+    def executemany(self, operation, seq):
+        # TODO: see if we can make this sequence evaluation lazy (should we?)
+        rseq = [ convert(operation, params, self.connection.paramstyle) for params in seq ]
+        if rseq:
+            self.raw.executemany(rseq[0][0], [ x[1] for x in rseq ])
+        self._colnames = []  # results not allowed here
 
     def into(self, target):
         while True:

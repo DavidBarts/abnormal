@@ -40,10 +40,10 @@ def convert(query, params, paramstyle):
         cached = _qcache[key]
     else:
         cached = _qcache[key] = _CONVERTERS[paramstyle](query, params)
-    return _convert(cached, params, _INITIALS[paramstyle](), _APPENDERS[paramstyle])
+    return _convert(cached, params, _INITIALS[paramstyle], _APPENDERS[paramstyle])
 
 def _convert(cached, params, initial_params, append_params):
-    returned_params = initial_params
+    returned_params = initial_params()
     for name in cached.names:
         append_params(returned_params, params, name)
     return (cached.sql, returned_params)
