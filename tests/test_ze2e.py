@@ -69,9 +69,10 @@ class TestEndToEnd(unittest.TestCase):
     #     # Tested in test_mapping.
     #     pass
 
-    # def test_scalar(self):
-    #     # Already in test_excutemany_conn, so a no-op.
-    #     pass
+    def test_scalar(self):
+        # General case already in setUp; test the multi-result case here
+        curs = self.conn.execute("select * from suppliers where sno = 1")
+        self.assertRaises(UnexpectedResultError, curs.into1, scalar)
 
     def test_sequence(self):
         name, status = self.conn.execute("select name, status from suppliers where sno = 1").into1(sequence)
