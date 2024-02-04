@@ -1,7 +1,5 @@
 # Exceptions. We always throw Error or one of its subclasses, and always
 # try to wrap other exceptions in one of our own.
-# TODO: Remove the note about wrapping (we don't), try and simplify to
-# just Error, move Error to __init__ if we can.
 
 class Error(Exception):
     def __init__(self, reason=None):
@@ -21,10 +19,14 @@ class Error(Exception):
         klass = self.__class__
         return klass.__module__ + "." + klass.__qualname__
 
-class SqlDriverException(Error):
+class UnexpectedResultError(Error):
     """
-    Wrap exceptions from the SQL driver in this one.
+    When we expect a single result and either get multiple results,
+    or nothing at all.
     """
+    # XXX - note that due to the limitations of some PEP 249 database
+    # interfaces, unexpected multiple results are not always reliably
+    # detected.
     def __init__(self, cause, reason=None):
         self.cause = cause
         super().__init__(reason)

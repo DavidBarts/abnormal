@@ -2,7 +2,7 @@
 
 # I m p o r t s
 
-from .exceptions import Error
+from .exceptions import Error, UnexpectedResultError
 from .todb import convert
 
 # C l a s s e s
@@ -60,9 +60,9 @@ class Cursor:
         ret = self._into(target)
         # XXX - some interfaces always return -1 for rowcount
         if abs(self.raw.rowcount) != 1:
-            raise Error(f"unexpected row count of {self.raw.rowcount}")
+            raise UnexpectedResultError(f"unexpected row count of {self.raw.rowcount}")
         if ret is None:
-            raise Error("unexpected lack of results")
+            raise UnexpectedResultError("unexpected lack of results")
         return ret
 
     def _into(self, target):
