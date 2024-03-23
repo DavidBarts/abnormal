@@ -30,4 +30,25 @@ Principles
 A Few Examples
 ==============
 
-This section not finished yet.
+These all assume the suppliers and parts database from
+*A Guide to the SQL Standard* by Date and Darwen.
+
+S:
+
+===  =====  ======  ======
+SNO  SNAME  STATUS  CITY
+===  =====  ======  ======
+S1   Smith  20      London
+S2   Jones  10      Paris
+S3   Blake  30      Paris
+S4   Clark  20      London
+S5   Adams  30      Athens
+===  =====  ======  ======
+
+P:
+
+===  =====  =====  ======  ======
+PNO  PNAME  COLOR  WEIGHT  CITY
+===  =====  =====  ======  ======
+P1   Nut    Red    12      London
+===  =====  =====  ======  ======

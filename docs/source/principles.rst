@@ -47,10 +47,17 @@ in their toolbox. If the only tool you are willing to use is a hammer, and
 you treat the whole world like a nail, lossage is going to result.
 
 The neat thing about relations is you don't have to think of everything ahead
-of time. Need to know all parts on hand from all suppliers in Berlin? ::
-    
-    -- need example here
-    
+of time. Need to know all parts on hand from all suppliers in London? ::
+
+    curs = conn.cursor()
+    query = """select p.pno as pno, p.pname as pname from sp
+        join s on sp.sno = s.sno
+        join p on sp.pno = p.pno
+        where s.city = 'London'"""
+    for result in curs.execute(query).into(mapping):
+        print(result['pno'], result['pname'])
+
+
 No need to go back and define a new SuppliersParts object (and all its assorted
 relationships), or to pull in more data than you actually need, just because you
 didn't think you would need this particular combination of data ahead of time.

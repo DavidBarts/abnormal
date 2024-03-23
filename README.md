@@ -29,4 +29,73 @@ Principles
 A Few Examples
 --------------
 
-This section not finished yet.
+These all assume the suppliers and parts database from *A Guide to the
+SQL Standard* by Date and Darwen.
+
+S:
+
+<table>
+<thead>
+<tr class="header">
+<th>SNO</th>
+<th>SNAME</th>
+<th>STATUS</th>
+<th>CITY</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>S1</td>
+<td>Smith</td>
+<td>20</td>
+<td>London</td>
+</tr>
+<tr class="even">
+<td>S2</td>
+<td>Jones</td>
+<td>10</td>
+<td>Paris</td>
+</tr>
+<tr class="odd">
+<td>S3</td>
+<td>Blake</td>
+<td>30</td>
+<td>Paris</td>
+</tr>
+<tr class="even">
+<td>S4</td>
+<td>Clark</td>
+<td>20</td>
+<td>London</td>
+</tr>
+<tr class="odd">
+<td>S5</td>
+<td>Adams</td>
+<td>30</td>
+<td>Athens</td>
+</tr>
+</tbody>
+</table>
+
+P:
+
+<table>
+<thead>
+<tr class="header">
+<th>PNO</th>
+<th>PNAME</th>
+<th>COLOR</th>
+<th>WEIGHT</th>
+<th>CITY</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>P1</td>
+<td>Nut</td>
+<td>Red</td>
+<td>12</td>
+<td>London</td>
+</tr>
+</tbody>
+</table>
