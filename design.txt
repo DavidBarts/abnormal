@@ -1,0 +1,44 @@
+Internal:
+
+tlexer  Trivial lexer for SQL. Already done.
+todb    For sending data to the database, convert :named as needed,
+        convert POJO's or mappings into what PEP0249 expects (varies
+        depending on paramstyle).
+fromdb  For receiving data from the database, pull data out of PEP0249
+        result object and invoke the passed callable.
+comdb   Anything common to todb and fromdb.
+
+External:
+
+Base everything around a Connection object, which will wrap a PEP0249
+connection object. This will support all standard PEP0249 methods, plus
+.execute. The latter will be shorthand for creating a one-off cursor and
+using it to read from the database. It will return an instance of the
+cursor object.
+
+This implies we will also have our own Cursor object, which will wrap a
+PEP0249 cursor. This .execute and .executemany methods for this cursor
+will have a defined return value: that of the cursor itself. The
+parameters for these methods will be an object or a map, and we will use
+our already-determined logic for extracting values from said object/map.
+
+The return values of .execute and .executemany will be defined to be the
+cursor itself.
+
+There will be a .into method that will accept a callable, which will get
+called with our already-defined logic.
+
+Note that this allows old-fashioned type access to be done as well; one
+does not have to use .into if one does not desire.
+
+Alternative: Cursors should have .callproc, .close, .execute, .into,
+.into1. That's it! .execute passed a sequence or generator will cause
+.executemany in the underlying logic. .into will create a generator.
+.into1 is a special case for instances where one and only one result is
+acceptable; that result will be returned or an exception will be thrown.
+
+Both Cursor and Connection objects shall have a .raw member, which
+returns the wrapped PEP0249 object.
+
+Put the external stuf into __init__.py, and the internal stuff into
+files as described in the previous section.

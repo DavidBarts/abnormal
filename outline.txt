@@ -1,0 +1,31 @@
+* General Description
+  + Works with any PEP 249 compliant database interface module.
+  + Itself has a design similar to PEP 249.
+  + SQL Translator plus Data Mapper
+    - The former is limited to translating parameter tokens... for now.
+      . This gets one about 90% of the way to smoothing out SQL differences.
+      . Addressing some of the remaining 10% (e.g. SELECT TOP, LIMIT, etc.)
+        is a WIP. 
+    - The latter can get data from any object or mapping (getattr or []),
+      and send data to any callable that expects keyword arguments.
+      . The latter includes the constructor for standard Python
+        @dataclass objects.
+      . Convience routine for requesting a mapping.
+      . Tries to be efficient (uses generators to minimize memory load).
+  + Is it an ORM or isn't it?
+    - Ultimately not as interesting as is it useful or not, and I find it
+      useful.
+* State the Principles
+* Quick Start
+  + It is a lot like PEP 249.
+  + Connections and cursors.
+    - .into and .into1
+    - .execute is a little different, it returns the cursor back
+      . Lets the user do .execute(stmt).into(callable)
+  + Using cursors explicitly or not.
+  + Something with an object (POPO) or mapping as the source.
+  + Something with locals() as the source.
+  + Using .into(scalar) and .into(sequence) to set locals.
+* API
+  + Basically, everything in __init__.py
+  + Don't forget case sensitivity!
