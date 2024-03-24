@@ -29,16 +29,14 @@ Principles
 A Few Examples
 --------------
 
-These all assume the suppliers and parts database from *A Guide to the
-SQL Standard* by Date and Darwen.
-
-S:
+These examples all assume a database containing the following
+`suppliers` table:
 
 <table>
 <thead>
 <tr class="header">
 <th>SNO</th>
-<th>SNAME</th>
+<th>NAME</th>
 <th>STATUS</th>
 <th>CITY</th>
 </tr>
@@ -77,25 +75,112 @@ S:
 </tbody>
 </table>
 
-P:
+### Connecting to the Database
 
-<table>
-<thead>
-<tr class="header">
-<th>PNO</th>
-<th>PNAME</th>
-<th>COLOR</th>
-<th>WEIGHT</th>
-<th>CITY</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>P1</td>
-<td>Nut</td>
-<td>Red</td>
-<td>12</td>
-<td>London</td>
-</tr>
-</tbody>
-</table>
+An abnORMal connection simply wraps a PEP 249 connection object, so one
+way to connect might be:
+
+    import sqlite3
+    import abnormal
+    conn = abnormal.Connection(sqlite3.connect("suppliers_parts.db"), sqlite3.paramstyle)
+
+However, it is a little repetitive and error-prone to have to pass the
+paramstyle value, so a convenience routine exists to make connecting a
+bit more concise (and a bit more like PEP 249):
+
+    import sqlite3
+    import abnormal
+    conn = abnormal.connect(sqlite3, "suppliers_parts.db")
+
+All subsequent examples assume an abnORMal connection object, `conn`.
+
+### Retrieve an Entry as a Dict
+
+Perhaps the most basic thing is to retrieve something by its primary
+key:
+
+    from abnormal import mapping
+    curs = conn.cursor()
+    result = curs.execute("select * from suppliers where sno = 'S1'").into1(mapping)
+    print("Supplier name is", result['name'])
+
+### Retrieve an Entry as a Data Class
+
+Of course, it can be much more useful to extract the result into an
+object. abnORMal is designed to play nice with Python `dataclass`
+objects:
+
+    from dataclasses import dataclass
+
+    @dataclass
+    class Supplier:
+        sno: str
+        name: str
+        status: int
+        city: str
+
+    curs = conn.cursor()
+    result = curs.execute("select * from suppliers where sno = 'S1'").into1(Supplier)
+    print(f"Supplier name is {result.name}.")
+
+### Retrieve an Entry as a Sequence
+
+Fans of old school PEP 249 will be happy to learn you can retrieve
+results as sequences, too:
+
+    from abnormal import sequence
+    curs = conn.cursor()
+    result = curs.execute("select * from suppliers where sno = 'S1'").into1(sequence)
+    print("Supplier name is", result[0])
+
+### Retrieve a Single Column as a Scalar
+
+If you are just interested in a single field, however, it can be simpler
+to extract the data into a scalar:
+
+    from abnormal import scalar
+    curs = conn.cursor()
+    result = curs.execute("select name from suppliers where sno = 'S1'").into1(scalar)
+    print(f"Supplier name is {result}.")
+
+### Retrieving Multiple Rows
+
+Extraction of multiple results is done via the `into` generator:
+
+    # same Supplier dataclass as above
+    curs = conn.cursor()
+    for result in curs.execute("select * from suppliers where city = 'Paris'").into(Supplier):
+        print(f"Supplier {result.name} is in Paris with status {result.status}")
+
+`into` supports unrolling into the same sorts of things as `into1` does:
+
+    from abnormal import scalar
+    curs = conn.cursor()
+    parisians = list(curs.execute("select name from suppliers where city = 'Paris'").into(scalar))
+
+### Using Parameterized Queries
+
+No matter what query paramstyle the PEP 249 connector uses, abnORMal
+always uses the *named* one, so as to smooth out the differences between
+the various connectors:
+
+    from abnormal import scalar
+    def get_suppliers_in(city):
+        curs = conn.cursor
+        return list(curs.execute("select name from suppliers where city = :city", {'city': city}).into(scalar))
+
+But that is getting needlessly repetitive. Thankfully, it is trivial to
+get abnORMal to read from local variables:
+
+    from abnormal import scalar
+    def get_suppliers_in(city):
+        curs = conn.cursor
+        return list(curs.execute("select name from suppliers where city = :city", locals()).into(scalar))
+
+Of course, we can read parameters from object attributes as well.
+Assuming the `Supplier` dataclass:
+
+    from abnormal import scalar
+    def get_others(supplier):
+        curs = conn.cursor
+        return list(curs.execute("select name from suppliers where city = :city and sno <> :sno", supplier).into(scalar))
