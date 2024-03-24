@@ -139,7 +139,7 @@ connectors::
 
     from abnormal import scalar
     def get_suppliers_in(city):
-        curs = conn.cursor
+        curs = conn.cursor()
         return list(curs.execute("select name from suppliers where city = :city", {'city': city}).into(scalar))
 
 But that is getting needlessly repetitive. Thankfully, it is trivial to get
@@ -147,12 +147,12 @@ abnORMal to read from local variables::
 
     from abnormal import scalar
     def get_suppliers_in(city):
-        curs = conn.cursor
+        curs = conn.cursor()
         return list(curs.execute("select name from suppliers where city = :city", locals()).into(scalar))
 
 Of course, we can read parameters from object attributes as well. Assuming the ``Supplier`` dataclass::
 
     from abnormal import scalar
     def get_others(supplier):
-        curs = conn.cursor
+        curs = conn.cursor()
         return list(curs.execute("select name from suppliers where city = :city and sno <> :sno", supplier).into(scalar))
