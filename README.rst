@@ -156,3 +156,7 @@ Of course, we can read parameters from object attributes as well. Assuming the `
     def get_others(supplier):
         curs = conn.cursor()
         return list(curs.execute("select name from suppliers where city = :city and sno <> :sno", supplier).into(scalar))
+
+Abnormal is smart enough to know the basics of SQL syntax, and won't be fooled by things like the following (which will set the supplier name to ':name').
+
+    curs.execute("update suppliers set name = ':name' where id = 'S5'", locals())

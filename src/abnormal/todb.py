@@ -1,4 +1,6 @@
 # Helpers for sending data to the database.
+# TODO: needs to be class-based, so can have one instance per connection,
+# so each connection gets its own private query cache. Or kill the cache.
 
 # I m p o r t s
 

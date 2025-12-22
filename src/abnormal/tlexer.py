@@ -7,10 +7,11 @@
 
 # I m p o r t s
 
-from ply import lex
+from .ply import lex
 from dataclasses import dataclass
+import re
 
-from .exceptions import Error
+from .exceptions import ProgrammingError
 
 # V a r i a b l e s
 
@@ -74,16 +75,16 @@ def t_multiop(t):
 
 def t_error(t):
     offset = t.lexer.lexpos - len(t.value)
-    raise Error(f"bad SQL at offset {offset}")
+    raise ProgrammingError(reason=f"bad SQL at offset {offset}")
 
 # This is the sole function that is intended to be called from other
 # modules.
-
+# TODO: this may need to wrap exceptions
 def tlexer(sql):
     """
     Tokenize input. Uses a fresh lexer each time so as to be thread safe.
     """
-    lexer = lex.lex()
+    lexer = lex.lex(reflags=re.UNICODE | re.VERBOSE)
     lexer.input(sql)
     was_white = False
     while True:

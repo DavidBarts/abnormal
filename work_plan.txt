@@ -1,0 +1,143 @@
+WORK PLAN
+=========
+
+Time to break off for a while. I've done quite a bit, and proved this is
+almost certainly worth doing, but I have other things in my life I need
+to spend time on.
+
+PEP 249 Compliance
+------------------
+
+Abnormal layers itself atop a PEP 249 database connection object. Does
+this mean that Abnormal itself should be PEP 249 compliant? At first,
+such an idea seems tempting. In fact, the code as it currently is (21
+Dec 2025) is partway through being converted to such. But I'm having
+very serious doubts about this now.
+
+1. It's not so easy to do. PEP 249 is module-based. So you end up with
+   module-level variables like threadsafety that are part of the API. As
+   a virtual connection object, Abnormal would need to set this as
+   appropriate on a per-connection object, which would require advanced
+   hackery with virtual module creation that may not be possible, and
+   even if it is would be tricky, convoluted, and arguably not very
+   Pythonic.
+   
+2. It leads to awkward, cluttered code, because I must wrap all
+   exceptions raised by the wrapped connection module into my own.
+   
+3. It leads to end user confusion. Keeping my exceptions distinct (this
+   means possibly undoing what I have done wrt exception naming, though
+   I am unsure on this) means that users will know whose code is at
+   fault when an exception is thrown. This is important, as there WILL
+   be bugs that come up in both my own code and the underlying drivers.
+   
+One of the principles of this whole project was KISS. I really think
+that may be best honored by being PEP 249-ish, and not strict PEP 249.
+Rip out those extra methods and perhaps put the exception hierarchy back
+as it was (will let the user easily distinguish w/ unqualified names).
+
+If the user needs a genuine PEP 249 interface to do something, the user
+has access to one already, via connection.raw.
+
+De-Stuttering
+-------------
+
+It is a work in progress. See the drivers directory and pending.py.
+
+Thread Safety
+-------------
+
+I need to shoot for level 2. I really think this is possible. It means
+simply pushing all stateful stuff into the cursor object. This strikes
+me as a good balance between efficiency and ease of implementation. Note
+that the stuff in the todb module is currently really bad from a thread
+safety perspective.
+
+The reason is, an extra occasional re-lexing or (more dramatically)
+schema intropection query to the DBMS really isn't that big a burden.
+Where things kill performance is in bulk operations in inner loops.
+Those can easily be rewritten to reuse a cursor. Premature optimization
+is the root of all evil.
+
+Finally, being stateful was the whole original intent and purpose of
+having cursor objects in the first place. Putting the state here meshes
+nicely with the whole "let SQL be SQL" philosophy of Abnormal.
+
+A Reference to the Wrapped Module in the Connection?
+----------------------------------------------------
+
+This may be a good idea. Then no need to track, say, driver and
+paramstyle separately. Just conn.module.paramstyle and lookup driver
+based on cursor.connection.module (a hash table lookup is cheap). Have
+this be a non-underscore variable, .module not ._module, and document
+it, like .raw.
+
+A Reference to the Driver? Expose DbType?
+-----------------------------------------
+
+First, our internal drivers make no sense to expose to the outer world.
+So don't.
+
+Second, DbType probably does make sense to expose. We are not doing full
+SQL translation, and SQL is not fully standardized. So at a user of a
+package designed to support multiple databases will likely at times need
+to know how to special-case database-dependent stuff. We have the
+information, the user is likely to need it, and it costs us virtually
+nothing to share it. This should be in the connection object.
+
+@property
+def dbtype(self) -> DbType:
+    if self._dbtype is None:
+        self._dbtype = DBTYPES[self.module.__name__]
+    return self._dbtype
+    
+Then in our de-stuttering logic (pending.py) we can do:
+    driver = DRIVERS[cursor.connection.dbtype]
+        
+Lazy Creation of De-Stuttering Drivers?
+---------------------------------------
+
+Again, I think not. There aren't that many singleton instances. The
+extra cost of doing it more efficiently just is not worth the extremely
+modest efficiency gain.
+
+Rework todb.py
+--------------
+
+It needs to be strict object-based for all mutable items. Then said
+object can be encapsulated in a connection, helping to achieve level 2
+thread safety.
+
+Lexer vs. Tlexer
+----------------
+
+Right now, I have both a "trivial" and a "production" lexer. Code seems
+to be using the "trivial" one. What's up? I don't seem to have any notes
+on things. The only tests are for tlexer.py. Looking at the code a bit,
+I think that tlexer may be good enough. Lexer seems to be part of an
+abandoned efforr to fully parse all of SQL, as part of defining my own
+SQL dialect, an approach I later rejected. Confirm this, and archive
+lexer.py, if appropriate.
+
+Transactions
+------------
+
+Arguably, the de-stuttered stuff should detect if transactions are
+supported and enabled and, if so, to use them.
+
+Context Managers
+----------------
+
+PEP 249 was written in the era before context managers and, as such,
+does not require that either connections or cursors be context managers.
+If Abnormal is merely PSP 249-ish, not truly PEP 249 compliant, this is
+a strong argument for specifying that both be context managers, with
+__exit__ defined to call close.
+
+Driver.row_schema Should Be Passed a Cursor, Not a Connection
+-------------------------------------------------------------
+
+This function is likely to be called as a result of bulk inserts in a
+loop. Doing so would allow cursor reuse. More importantly, the cursor
+object contains stateful stuff like a reference to the cache we will
+need to use.

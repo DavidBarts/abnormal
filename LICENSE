@@ -1,4 +1,7 @@
-Copyright © 2024 David W. Barts
+Copyright © 2024–2026, David W. Barts
+
+The main code is covered by the MIT license (see below). Things in the ply
+subpackage are covered by the license at the head of those source files.
 
 MIT LICENSE
 

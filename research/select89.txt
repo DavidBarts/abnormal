@@ -1,0 +1,265 @@
+[81]
+
+<select statement> ::=
+    SELECT [ALL | DISTINCT] <select list>
+    INTO <select target list>
+    <table expression>
+
+<select target list> :: =
+    <target specification> [{,<target specification>}...]
+
+
+[50]
+
+<select list> :: =
+    <value expression> [{, <value expression>}...] | *
+
+[42]
+
+<table expression> :: =
+    <from clause>
+    [<where clause>]
+    [<group by clause>]
+    [<having clause>]
+
+[24]
+
+<target specification> =
+    <parameter specification> | <variable specification>
+
+<parameter specification> :: =
+    <parameter name> [<indicator parameter>]
+
+<indicator parameter> :: =
+    [INDICATOR] <parameter name>
+
+<variable specification> :: =
+    <embedded variable name> [<indicator variable>]
+
+<indicator variable> :: =
+    [INDICATOR] <embedded variable name>
+
+[29]
+
+<value expression> :: =
+    <term> | <value expression> + <term> | <value expression> - <term>
+
+<term> :: =
+    <factor> | <term> * <factor> | <term> / <factor>
+
+<factor> :: =
+    [+ | -] <primary>
+
+<primary> :: =
+    <value specification>
+    | <column specification>
+    | <set function specification>
+    | ( <value expression> )
+
+[43]
+
+<from clause> :: =
+    FROM <table reference> [{,<table reference>}...]
+
+<table reference> :: =
+    <table name> [<correlation name>]
+
+[45]
+
+<where clause> :: =
+    WHERE <search condition>
+
+[46]
+
+<group by clause> :: =
+    GROUP BY <column specification> [{, <column specification>}...]
+
+[47]
+
+<having clause> :: =
+    HAVING <search condition>
+
+[20]
+
+<table name> ::= [<authorization identifiers] <table identifier>
+<authorization identifier> ::= <identifier>
+<table identifier> ::= <identifier>
+<column name> ::= <identifier>
+<correlation name> <identifier>
+<module name> ::= <identifier>
+<cursor name> ::= <identifier>
+<procedure name> ::= <identifier>
+<parameter name> ::= <identifier>
+
+[92]
+
+<embedded variable name> :: =
+    :<host identifier>
+
+<host identifier> :: =
+    < COBOL host identifier>
+    | <FORTRAN host identifier>
+    | <Pascal host identifier>
+    | <PL/I host identifier>
+
+[24]
+
+<value specification> :: =
+    <parameter specification> | <variable specification> | <literal> | USER
+
+[27]
+
+<set function specification> :: =
+    COUNT(*) | <distinct set function> | <all set function>
+
+<distinct set function> :: =
+    {AVG | MAX | MIN | SUM | COUNT} (DISTINCT <column specification>)
+
+<all set function > :: =
+    {AVG | MAX | MIN | SUM} ( [ALL] <value expression> )
+
+[40]
+
+<search condition> :: =
+    <boolean term> | <search condition> OR <boolean term>
+
+<boolean term> :: =
+    <boolean factor> | <boolean term> AND <boolean factor>
+
+<boolean factor> :: =
+    [NOT] <boolean primary>
+
+<boolean primary> :: =
+    <predicate> | (<search condition>)
+
+[26]
+
+<column specification> :: =
+    [<qualifier>.] <column name>
+
+<qualifier> :: =
+    <table name> | <correlation name>
+
+[16]
+
+<literal> :: =
+    <character string literal> | <numeric literal>
+
+<character string literal> :: =
+    '<character representation>...'
+
+<character representation> :: =
+    <nonquote character> | <quote representation>
+
+<nonquote character> :: = See Syntax Rule 1.
+
+<quote representation> :: = ''
+
+<numeric literal> :: =
+    <exact numeric literal> | <approximate numeric literal>
+
+<exact numeric literal> :: =
+    [+ | -] { <unsigned integer>[.<unsigned integer>]
+        | <unsigned integer>.
+        | . <unsigned integer> }
+
+<approximate numeric literal> :: = <mantissa>E<exponent>
+
+<mantissa> ::= <exact numeric literal>
+
+<exponent> ::= <signed integer>
+
+<signed integer> ::= [+ | -] <unsigned integer>
+
+<unsigned integer> :: = <digit>...
+
+[31]
+
+<predicate> =
+    <comparison predicate>
+    | <between predicate>
+    | <in predicate>
+    | <like predicate>
+    | <null predicate>
+    | <quantified predicate>
+    | <exists predicate>
+
+[15]
+
+<character> :: = <digit> | <letter> | <special character>
+
+<digit> :: = 0|1|2|3|4|S|6|7|8|9
+
+<letter> :: = <upper case letter> | <lower case letter>
+
+<upper case letter> :: =
+    A|B|C|D|E|F|G|H|I
+    |J|K|L|M|N|0|P|Q|R
+    |S|T|U|V|W|X|Y|Z
+
+<lower case letter> :: =
+    a|b|c|d|e|f|g|h|i
+    |j|k|l|m|n|o|p|q|r
+    |s|t|u|v|w|x|y|z
+
+<special character> :: = See Syntax Rule 1.
+
+[32]
+
+<comparison predicate> :: =
+    <value expression> <comp op> {<value expression> | <subquery>}
+
+<comp op> :: =
+    = | <> | < | > | <= | >=
+
+[33]
+
+<between predicate> :: =
+    <value expression> [NOT] BETWEEN <value expression> AND <value expression>
+
+[34]
+
+<in predicate> :: =
+    <value expression> [NOT] IN {<subquery> | (<in value list>)}
+
+<in value list> :: =
+    <value specification>{,<value specification>}...
+
+[35]
+
+<like predicate> :: =
+    <column specification> [NOT] LIKE <pattern>
+    [ESCAPE <escape character>]
+
+<pattern> :: = <value specification>
+
+<escape character> :: = <value specification>
+
+[37]
+
+<null predicate> :: =
+    <column specification> IS [NOT] NULL
+
+[38]
+
+<quantified predicate> :: =
+    <value expression> <comp op> <quantifier> <subquery>
+
+<quantifier> :: = <all> | <some>
+
+<all> ::= ALL
+
+<some> ::= SOME | ANY
+
+[39]
+
+<exists predicate> :: =
+    EXISTS <subquery>
+
+[48]
+
+<subquery> :: =
+    (SELECT [ALL | DISTINCT] <result specification> <table expression>)
+
+<result specification> :: =
+    <value expression> | *
