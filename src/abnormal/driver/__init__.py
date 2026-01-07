@@ -9,7 +9,6 @@ from .dbtype import DbType, DBTYPES
 from .standard import StandardDriver
 from .db2 import Db2Driver
 from .oracle import OracleDriver
-from . import Connection
 
 @dataclass
 class RowSchema:
@@ -18,7 +17,7 @@ class RowSchema:
 
 class Driver(ABC):
     @abstractmethod
-    def row_schema(self, connection: Connection, table_name: str):
+    def row_schema(self, connection, table_name: str):
         ...
 
     def split_table_name(self, unsplit: str) -> tuple[Optional[str], str]:

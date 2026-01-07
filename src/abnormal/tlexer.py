@@ -75,7 +75,7 @@ def t_multiop(t):
 
 def t_error(t):
     offset = t.lexer.lexpos - len(t.value)
-    raise ProgrammingError(reason=f"bad SQL at offset {offset}")
+    raise SqlError(reason=f"bad SQL at offset {offset}")
 
 # This is the sole function that is intended to be called from other
 # modules.

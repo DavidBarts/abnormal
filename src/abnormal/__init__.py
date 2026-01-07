@@ -2,9 +2,13 @@
 
 # I m p o r t s
 
-from .driver import driver_for as _driver_for
+from collections.abc import Callable, Mapping, Sequence
+from types import ModuleType
+
+from .driver import driver_for as _driver_for, Driver
 from .exceptions import Error, DataError, InterfaceError, ProgrammingError
 from .misc import Namespace
+from .pending import InsertOperation, UpdateOperation
 from .todb import convert as _convert
 
 # V a r i a b l e s
@@ -18,7 +22,10 @@ paramstyle = "named"
 # C l a s s e s
 
 class Connection:
-    def __init__(self, raw, paramstyle, driver):
+    def __init__(self, raw: any, paramstyle: str, driver: Driver):
+        for name in ['close', 'commit', 'rollback', 'cursor']:
+            if not callable(getattr(raw, name, None)):
+                raise TypeError("Passed object is not a connection.")
         self.raw = raw
         self._paramstyle = paramstyle
         self._driver = driver
@@ -35,13 +42,19 @@ class Connection:
     def cursor(self):
         return Cursor(self.raw.cursor(), self)
 
-    def execute(self, query, params={}):
+    def execute(self, query: str, params: Mapping = {}):
         return self.cursor().execute(query, params)
 
-    def executemany(self, query, seq):
+    def executemany(self, query: str, seq: Sequence):
         cursor = self.cursor()
         cursor.executemany(query, seq)
         return cursor
+
+    def insert_into(self, table: str) -> InsertOperation:
+        return self.cursor().insert_into(table)
+
+    def update(self, table: str) -> UpdateOperation:
+        return self.cursor().update(table)
 
 class Cursor:
     def __init__(self, raw, connection):
@@ -120,9 +133,9 @@ class Cursor:
         ret = self._into(target)
         # XXX - some interfaces always return -1 for rowcount
         if abs(self.raw.rowcount) != 1:
-            raise DataError(reason=f"unexpected row count of {self.raw.rowcount}")
+            raise UnexpectedResultError(f"unexpected row count of {self.raw.rowcount}")
         if ret is None:
-            raise DataError(reason="unexpected lack of results")
+            raise UnexpectedResultError("unexpected lack of results")
         return ret
 
     def _into(self, target):
@@ -139,6 +152,12 @@ class Cursor:
             kwargs[colname] = row[col]
             col += 1
         return target(**kwargs)
+
+    def insert_into(self, table: str) -> InsertOperation:
+        return InsertOperation(self, table)
+
+    def update(self, table: str) -> UpdateOperation:
+        return UpdateOperation(self, table)
 
 # F u n c t i o n s
 
@@ -157,7 +176,7 @@ def scalar(**kwargs):
     if ncols == 1:
         return next(iter(kwargs.values()))
     else:
-        raise DataError(reason=f"unexpected column count of {ncols}")
+        raise UnexpectedResultError(f"unexpected column count of {ncols}")
 
 def sequence(**kwargs):
     "For returning a row as a sequence."
