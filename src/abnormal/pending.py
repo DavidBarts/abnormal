@@ -65,7 +65,7 @@ class _PendingOperation(ABC):
             ret.append(column)
         return ret
 
-    def _find(self, unmapped: str) -> Optional[str]
+    def _find(self, unmapped: str) -> Optional[str]:
         name = self._dofind(unmapped)
         if name is not None:
             return unmapped
@@ -73,7 +73,7 @@ class _PendingOperation(ABC):
             return self._dofind(self._casemap[unmapped.lower()])
         return None
 
-    def _dofind(self, name: str) -> Optional[str]
+    def _dofind(self, name: str) -> Optional[str]:
         if isinstance(self.obj, Mapping) and name in self.obj:
             return name
         if hasattr(self.obj, name):
@@ -137,7 +137,6 @@ class UpdateOperation(_PendingOperation):
 
     def from_source(self, obj: Any) -> Optional[Any]:
         query = [ "update ", self.cursor.driver.quote_identifier(self.table), " set" ]
-        ]
 
         needs_comma = False
         for col in self._filter(self._columns):

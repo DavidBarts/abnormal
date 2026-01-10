@@ -49,7 +49,7 @@ class QueryConverter:
             cached = self._qcache[key] = _CONVERTERS[paramstyle](query, params)
         return self._convert(cached, params, _INITIALS[paramstyle], _APPENDERS[paramstyle])
 
-    def _convert(self, cached: CacheValue, params: Any, initial_params: Callable[[], Params], append_params: Callable[Params, Any, str], None]) -> tuple[str, Params]:
+def _convert(self, cached: CacheValue, params: Any, initial_params: Callable[[], Params], append_params: Callable[[Params, Any, str], None]) -> tuple[str, Params]:
         returned_params = initial_params()
         for name in cached.names:
             append_params(returned_params, params, name)

@@ -33,7 +33,7 @@ class OracleDriver(Driver):
                         AND cons.table_name = cols.table_name
                         AND cons.constraint_type = 'P'
                     ORDER BY cols.position ASC""", locals())
-            primary = tuple([ x.lower() for cursor.into(scalar) ])
+            primary = tuple([ x.lower() for x in cursor.into(scalar) ])
             if not primary:
                 raise InterfaceError(reason="No primary keys reported in {dbname}.{tabname}!")
 
@@ -42,7 +42,7 @@ class OracleDriver(Driver):
             else:
                 cursor.execute("SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE OWNER = SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AND TABLE_NAME = :tabname ORDER BY COLUMN_ID ASC", locals())
             pset = set(primary)
-            others = tuple([ x for x in [ y.lower() for y in cursor.into(scalar) ] where x not in pset ])
+            others = tuple([ x for x in [ y.lower() for y in cursor.into(scalar) ] if x not in pset ])
 
             return RowSchema(primary, others)
 
