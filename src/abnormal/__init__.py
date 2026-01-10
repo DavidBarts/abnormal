@@ -9,7 +9,7 @@ from .driver import driver_for as _driver_for, Driver
 from .exceptions import Error, UnexpectedResultError, SqlError, IncompleteDataError
 from .misc import Namespace
 from .pending import InsertOperation, UpdateOperation
-from .todb import convert as _convert
+from .todb import QueryConverter as _QueryConverter
 
 # V a r i a b l e s
 
@@ -17,9 +17,11 @@ from .todb import convert as _convert
 # never will be). There are good reasons for that. Just for openers,
 # module globals like apilevel and threadsafety depend on the module
 # we wrap, and therefore there cannot be globally-correct values for
-# them.
+# them. Also note that threadsafety below is OUR threadsafety level
+# ONLY. The overall threadsafety level is the lesser of this and that
+# of the wrapped connector.
 apilevel = "2.0"
-threadsafety = 0  # TODO: ensure thread safety
+threadsafety = 2
 paramstyle = "named"
 
 # C l a s s e s
@@ -64,6 +66,7 @@ class Cursor:
         self.raw = raw
         self.connection = connection
         self._colnames = None
+        self._converter = _QueryConverter()
 
     @property
     def arraysize(self):
@@ -90,7 +93,7 @@ class Cursor:
         self.raw.__del__()
 
     def execute(self, operation, params={}):
-        self.raw.execute(*_convert(operation, params, self.connection._paramstyle))
+        self.raw.execute(*self._converter.convert(operation, params, self.connection._paramstyle))
         if self.raw.description is None:
             self._colnames = []
         else:
@@ -99,7 +102,7 @@ class Cursor:
 
     def executemany(self, operation, seq):
         # TODO: see if we can make this sequence evaluation lazy (should we?)
-        rseq = [ _convert(operation, params, self.connection.paramstyle) for params in seq ]
+        rseq = [ self._converter.convert(operation, params, self.connection.paramstyle) for params in seq ]
         if rseq:
             self.raw.executemany(rseq[0][0], [ x[1] for x in rseq ])
         self._colnames = []  # results not allowed here

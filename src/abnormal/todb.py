@@ -20,7 +20,9 @@ _INITIALS = {
     'pyformat': dict
 }
 
-_qcache: map[CacheKey, CacheValue] = {}
+# Also see below at end of file.
+
+type Params = list[Any] | dict[str, Any]
 
 # C l a s s e s
 
@@ -34,22 +36,26 @@ class CacheValue:
         self.sql = ''.join(rawsql)
         self.names = names
 
+class QueryConverter:
+    def __init__(self):
+        self._qcache: map[CacheKey, CacheValue] = {}
+
+    def convert(self, query: str, params: Any, paramstyle: str):
+        "Convert query and params from vendor-neutral to database-specific form."
+        key = CacheKey(query, paramstyle)
+        if key in self._qcache:
+            cached = self._qcache[key]
+        else:
+            cached = self._qcache[key] = _CONVERTERS[paramstyle](query, params)
+        return self._convert(cached, params, _INITIALS[paramstyle], _APPENDERS[paramstyle])
+
+    def _convert(self, cached: CacheValue, params: Any, initial_params: Callable[[], Params], append_params: Callable[Params, Any, str], None]) -> tuple[str, Params]:
+        returned_params = initial_params()
+        for name in cached.names:
+            append_params(returned_params, params, name)
+        return (cached.sql, returned_params)
+
 # F u n c t i o n s
-
-def convert(query: str, params: Any, paramstyle: str):
-    "Convert query and params from vendor-neutral to database-specific form."
-    key = CacheKey(query, paramstyle)
-    if key in _qcache:
-        cached = _qcache[key]
-    else:
-        cached = _qcache[key] = _CONVERTERS[paramstyle](query, params)
-    return _convert(cached, params, _INITIALS[paramstyle], _APPENDERS[paramstyle])
-
-def _convert(cached: CacheValue, params: Any, initial_params: Callable[[], list[Any] | dict[str, Any]], append_params: Callable[[list[Any] | dict[str, Any], Any, str], None]):
-    returned_params = initial_params()
-    for name in cached.names:
-        append_params(returned_params, params, name)
-    return (cached.sql, returned_params)
 
 def _positional(query: str, params: Any, repl: str) -> CacheValue:
     rquery = []
