@@ -2,7 +2,7 @@
 
 import unittest
 from dataclasses import dataclass
-import abnormal.todb as todb
+import abnormal.todb import QueryConverter
 
 # C l a s s e s
 
@@ -23,21 +23,24 @@ _STDOBJ = Suppliers(**_STDREC)
 # T e s t s
 
 class TestTodb(unittest.TestCase):
+    def setUp(self):
+        self.converter = QueryConverter()
+
     # This and the next case should use qmark; if this is changed, test_qmark
     # will have to be more than a no-op.
     def test_mapping(self):
-        result = todb.convert(_Q1, _STDREC, 'qmark')
+        result = self.converter.convert(_Q1, _STDREC, 'qmark')
         self.assertEqual(result[0], "insert into suppliers (sno, name, status, city) values (?, ?, ?, ?)")
         self.assertEqual(result[1], [_STDOBJ.sno, _STDOBJ.name, _STDOBJ.status, _STDOBJ.city])
-        result = todb.convert(_Q2, _STDREC, 'qmark')
+        result = self.converter.convert(_Q2, _STDREC, 'qmark')
         self.assertEqual(result[0], "select * from suppliers where sno = ?")
         self.assertEqual(result[1], [_STDOBJ.sno])
 
     def test_popo(self):
-        result = todb.convert(_Q1, _STDOBJ, 'qmark')
+        result = self.converter.convert(_Q1, _STDOBJ, 'qmark')
         self.assertEqual(result[0], "insert into suppliers (sno, name, status, city) values (?, ?, ?, ?)")
         self.assertEqual(result[1], [_STDOBJ.sno, _STDOBJ.name, _STDOBJ.status, _STDOBJ.city])
-        result = todb.convert(_Q2, _STDOBJ, 'qmark')
+        result = self.converter.convert(_Q2, _STDOBJ, 'qmark')
         self.assertEqual(result[0], "select * from suppliers where sno = ?")
         self.assertEqual(result[1], [_STDOBJ.sno])
 
@@ -47,34 +50,34 @@ class TestTodb(unittest.TestCase):
         pass
 
     def test_format(self):
-        result = todb.convert(_Q1, _STDOBJ, 'format')
+        result = self.converter.convert(_Q1, _STDOBJ, 'format')
         self.assertEqual(result[0], "insert into suppliers (sno, name, status, city) values (%s, %s, %s, %s)")
         self.assertEqual(result[1], [_STDOBJ.sno, _STDOBJ.name, _STDOBJ.status, _STDOBJ.city])
-        result = todb.convert(_Q2, _STDREC, 'format')
+        result = self.converter.convert(_Q2, _STDREC, 'format')
         self.assertEqual(result[0], "select * from suppliers where sno = %s")
         self.assertEqual(result[1], [_STDOBJ.sno])
 
     def test_numeric(self):
-        result = todb.convert(_Q1, _STDOBJ, 'numeric')
+        result = self.converter.convert(_Q1, _STDOBJ, 'numeric')
         self.assertEqual(result[0], "insert into suppliers (sno, name, status, city) values (:1, :2, :3, :4)")
         self.assertEqual(result[1], [_STDOBJ.sno, _STDOBJ.name, _STDOBJ.status, _STDOBJ.city])
-        result = todb.convert(_Q2, _STDREC, 'numeric')
+        result = self.converter.convert(_Q2, _STDREC, 'numeric')
         self.assertEqual(result[0], "select * from suppliers where sno = :1")
         self.assertEqual(result[1], [_STDOBJ.sno])
 
     def test_named(self):
-        result = todb.convert(_Q1, _STDOBJ, 'named')
+        result = self.converter.convert(_Q1, _STDOBJ, 'named')
         self.assertEqual(result[0], _Q1)
         self.assertEqual(result[1], _STDREC)
-        result = todb.convert(_Q2, _STDREC, 'named')
+        result = self.converter.convert(_Q2, _STDREC, 'named')
         self.assertEqual(result[0], _Q2)
         self.assertEqual(result[1], { 'sno': _STDOBJ.sno })
 
     def test_pyformat(self):
-        result = todb.convert(_Q1, _STDOBJ, 'pyformat')
+        result = self.converter.convert(_Q1, _STDOBJ, 'pyformat')
         self.assertEqual(result[0], "insert into suppliers (sno, name, status, city) values (%(sno)s, %(name)s, %(status)s, %(city)s)")
         self.assertEqual(result[1], _STDREC)
-        result = todb.convert(_Q2, _STDREC, 'pyformat')
+        result = self.converter.convert(_Q2, _STDREC, 'pyformat')
         self.assertEqual(result[0], "select * from suppliers where sno = %(sno)s")
         self.assertEqual(result[1], { 'sno': _STDOBJ.sno })
 
@@ -86,9 +89,9 @@ class TestTodb(unittest.TestCase):
     def test_caching(self):
         query = "select * from parts where pno = :pno"
         pno = "p1"
-        before = len(todb._qcache)
+        before = len(self.converter._qcache)
         result1 = todb.convert(query, locals(), 'qmark')
-        after = len(todb._qcache)
+        after = len(self.converter._qcache)
         self.assertGreater(after, before)
         result2 = todb.convert(query, locals(), 'qmark')
         self.assertEqual(len(todb._qcache), after)
