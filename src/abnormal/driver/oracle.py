@@ -9,7 +9,7 @@ from .. import scalar
 from ..exceptions import InterfaceError
 
 class OracleDriver(Driver):
-    def row_schema(self, connection: Connection, table_name: str) -> RowSchema:
+    def row_schema(self, connection, table_name: str) -> RowSchema:
         dbname, tabname = self.split_table_name(table_name.upper())
 
         cursor = connection.cursor

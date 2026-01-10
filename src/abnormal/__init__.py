@@ -2,19 +2,22 @@
 
 # I m p o r t s
 
-from collections.abc import Callable, Mapping, Sequence
-from types import ModuleType
+from collections.abc import Sequence as _Sequence
+from typing import Any as _Any
 
 from .driver import driver_for as _driver_for, Driver
-from .exceptions import Error, DataError, InterfaceError, ProgrammingError
+from .exceptions import Error, UnexpectedResultError, SqlError, IncompleteDataError
 from .misc import Namespace
 from .pending import InsertOperation, UpdateOperation
 from .todb import convert as _convert
 
 # V a r i a b l e s
 
-# PEP 249 support. We ARE NOT fully PEP 249 compliant! TODO: Hopefully some
-# day.
+# PEP 249 support. We ARE NOT fully PEP 249 compliant (and we probably
+# never will be). There are good reasons for that. Just for openers,
+# module globals like apilevel and threadsafety depend on the module
+# we wrap, and therefore there cannot be globally-correct values for
+# them.
 apilevel = "2.0"
 threadsafety = 0  # TODO: ensure thread safety
 paramstyle = "named"
@@ -22,7 +25,7 @@ paramstyle = "named"
 # C l a s s e s
 
 class Connection:
-    def __init__(self, raw: any, paramstyle: str, driver: Driver):
+    def __init__(self, raw: _Any, paramstyle: str, driver: Driver):
         for name in ['close', 'commit', 'rollback', 'cursor']:
             if not callable(getattr(raw, name, None)):
                 raise TypeError("Passed object is not a connection.")
@@ -42,10 +45,10 @@ class Connection:
     def cursor(self):
         return Cursor(self.raw.cursor(), self)
 
-    def execute(self, query: str, params: Mapping = {}):
+    def execute(self, query: str, params: _Any = {}):
         return self.cursor().execute(query, params)
 
-    def executemany(self, query: str, seq: Sequence):
+    def executemany(self, query: str, seq: _Sequence):
         cursor = self.cursor()
         cursor.executemany(query, seq)
         return cursor
@@ -74,7 +77,7 @@ class Cursor:
     def rowcount(self):
         return self.raw.rowcount
 
-    def callproc(self, procname, params=None):
+    def callproc(self, procname, params: _Any = None):
         if params is None:
             return self.raw.callproc(procname)
         else:

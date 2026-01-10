@@ -10,7 +10,7 @@ class StandardDriver(Driver):
         self.db_term = db_term
         self.get_current_db = get_current_db
 
-    def row_schema(self, connection: Connection, table_name: str) -> RowSchema:
+    def row_schema(self, connection, table_name: str) -> RowSchema:
         dbname, tabname = self.split_table_name(table_name)
         primary = []
         others = []

@@ -2,7 +2,7 @@
 # try to wrap other exceptions in one of our own.
 
 class Error(Exception):
-    def __init__(self, reason=None):
+    def __init__(self, reason: str = None):
         self.reason = reason
         super().__init__()
 

@@ -4,8 +4,9 @@
 
 # I m p o r t s
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from .tlexer import SqlToken, tlexer
 
@@ -19,7 +20,7 @@ _INITIALS = {
     'pyformat': dict
 }
 
-_qcache = {}
+_qcache: map[CacheKey, CacheValue] = {}
 
 # C l a s s e s
 
@@ -35,7 +36,7 @@ class CacheValue:
 
 # F u n c t i o n s
 
-def convert(query, params, paramstyle):
+def convert(query: str, params: Any, paramstyle: str):
     "Convert query and params from vendor-neutral to database-specific form."
     key = CacheKey(query, paramstyle)
     if key in _qcache:
@@ -44,13 +45,13 @@ def convert(query, params, paramstyle):
         cached = _qcache[key] = _CONVERTERS[paramstyle](query, params)
     return _convert(cached, params, _INITIALS[paramstyle], _APPENDERS[paramstyle])
 
-def _convert(cached, params, initial_params, append_params):
+def _convert(cached: CacheValue, params: Any, initial_params: Callable[[], list[Any] | dict[str, Any]], append_params: Callable[[list[Any] | dict[str, Any], Any, str], None]):
     returned_params = initial_params()
     for name in cached.names:
         append_params(returned_params, params, name)
     return (cached.sql, returned_params)
 
-def _positional(query, params, repl):
+def _positional(query: str, params: Any, repl: str) -> CacheValue:
     rquery = []
     rnames = []
     for token in tlexer(query):
@@ -64,7 +65,7 @@ def _positional(query, params, repl):
 # XXX - PEP0249 never explicitly mentions it, but the parameters in this
 # style apparently use 1-based indexing. See:
 # https://github.com/python/cpython/issues/99953
-def _numeric(query, params):
+def _numeric(query: str, params: Any) -> CacheValue:
     rquery = []
     rnames = []
     index = {}
@@ -79,7 +80,7 @@ def _numeric(query, params):
             rquery.append(token.value)
     return CacheValue(rquery, rnames)
 
-def _named(query, params, prefix, suffix):
+def _named(query: str, params: Any, prefix: str, suffix: str) -> CacheValue:
     rquery = []
     rnames = []
     for token in tlexer(query):
@@ -91,27 +92,24 @@ def _named(query, params, prefix, suffix):
             rquery.append(token.value)
     return CacheValue(rquery, rnames)
 
-def _getname(cname):
+def _getname(cname: str) -> str:
     assert cname.startswith(':')
     return cname[1:]
 
-def _getparam(params, name):
+def _getparam(params: Any, name: str) -> Any:
     if isinstance(params, Mapping):
         return params[name]
     else:
         return getattr(params, name)
 
-def _mktuple(rquery, params):
-    return (''.join(rquery), params)
-
-def _to_list(accum, params, name):
+def _to_list(accum: list[Any], params: Any, name: str) -> None:
     accum.append(_getparam(params, name))
 
-def _to_dict(accum, params, name):
+def _to_dict(accum: dict[str, Any], params: Any, name: str) -> None:
     if name not in accum:
         accum[name] = _getparam(params, name)
 
-# XXX - Can only be defined after all internal functions are fully defined.
+# Can only be defined after all internal functions are fully defined.
 
 _APPENDERS = {
     'qmark': _to_list,

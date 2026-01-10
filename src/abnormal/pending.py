@@ -4,20 +4,14 @@
 # issues.
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
 from .driver import driver_for
 from .todb import convert
 
 class _PendingOperation(ABC):
-    @dataclass
-    class Result:
-        name: str
-        value: any
-
-    def __init__(self, cursor, table, mandatory_pk):
+    def __init__(self, cursor: Any, table: str, mandatory_pk: bool):
         self.cursor = cursor
         self.table = table
         self.mandatory_pk = mandatory_pk
@@ -29,7 +23,7 @@ class _PendingOperation(ABC):
         self._map_columns()
 
     @abstractmethod
-    def from_source(self, obj: Any):
+    def from_source(self, obj: Any) -> Optional[Any]:
         ...
 
     def _init_names(self, obj: Any) -> None:
@@ -86,7 +80,7 @@ class _PendingOperation(ABC):
             return name
         return None
 
-    def including(self, *args):
+    def including(self, *args: str) -> _PendingOperation:
         temp = set(args)
         if self.mandatory_pk:
             for pk_column in self._pk_columns:
@@ -97,7 +91,7 @@ class _PendingOperation(ABC):
             self._exc = set()
         return self
 
-    def excluding(self, *args):
+    def excluding(self, *args: str) -> _PendingOperation:
         temp = set(args)
         if self.mandatory_pk:
             for pk_column in self._pk_columns:
@@ -108,7 +102,7 @@ class _PendingOperation(ABC):
         self._exc = temp
         return self
 
-    def _filter(self, unfiltered):
+    def _filter(self, unfiltered: Sequence[str]):
         if self.inc:
             return [ x for x in unfiltered if x in self.inc ]
         elif self.exc:
@@ -123,7 +117,7 @@ class InsertOperation(_PendingOperation):
     def __init__(self, cursor, table):
         super().__init__(cursor, table, False)
 
-    def from_source(self, obj):
+    def from_source(self, obj: Any) -> Optional[Any]:
         cols = self._filter(self._pk_columns + self._columns)
         query = [
             "insert into", self.cursor.driver.quote_identifier(self.table),
@@ -141,7 +135,7 @@ class UpdateOperation(_PendingOperation):
     def __init__(self, cursor, table):
         super().__init__(cursor, table, True)
 
-    def from_source(self, obj):
+    def from_source(self, obj: Any) -> Optional[Any]:
         query = [ "update ", self.cursor.driver.quote_identifier(self.table), " set" ]
         ]
 

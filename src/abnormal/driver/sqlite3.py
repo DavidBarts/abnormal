@@ -5,7 +5,7 @@ from .. import namespace
 from ..exceptions import InterfaceError
 
 class Sqlite3Driver(Driver):
-    def row_schema(self, connection: Connection, table_name: str) -> RowSchema:
+    def row_schema(self, connection, table_name: str) -> RowSchema:
         primary = []
         others = []
 
