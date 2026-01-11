@@ -3,7 +3,7 @@
 # I m p o r t s
 
 from collections.abc import Sequence as _Sequence
-from typing import Any as _Any
+from typing import Any as _Any, Callable as _Callable, Optional as _Optional, Unpack as _Unpack
 
 from .driver import driver_for as _driver_for, Driver
 from .exceptions import Error, UnexpectedResultError, SqlError, IncompleteDataError
@@ -23,6 +23,8 @@ from .todb import QueryConverter as _QueryConverter
 apilevel = "2.0"
 threadsafety = 2
 paramstyle = "named"
+
+type _Target = _Callable[[_Unpack[_Any]], _Any]
 
 # C l a s s e s
 
@@ -80,7 +82,7 @@ class Cursor:
     def rowcount(self):
         return self.raw.rowcount
 
-    def callproc(self, procname, params: _Any = None):
+    def callproc(self, procname: str, params: _Any = None):
         if params is None:
             return self.raw.callproc(procname)
         else:
@@ -92,7 +94,7 @@ class Cursor:
     def __del__(self):
         self.raw.__del__()
 
-    def execute(self, operation, params={}):
+    def execute(self, operation: str, params={}):
         self.raw.execute(*self._converter.convert(operation, params, self.connection._paramstyle))
         if self.raw.description is None:
             self._colnames = []
@@ -100,42 +102,44 @@ class Cursor:
             self._colnames = [ x[0].lower() for x in self.raw.description ]
         return self
 
-    def executemany(self, operation, seq):
+    def executemany(self, operation: str, seq: _Sequence[_Any]):
         # TODO: see if we can make this sequence evaluation lazy (should we?)
         rseq = [ self._converter.convert(operation, params, self.connection.paramstyle) for params in seq ]
         if rseq:
             self.raw.executemany(rseq[0][0], [ x[1] for x in rseq ])
         self._colnames = []  # results not allowed here
 
-    def fetchone(self):
+    def fetchone(self) -> _Optional[_Sequence[_Any]]:
         return self.raw.fetchone()
 
-    def fetchmany(self, size=self.arraysize):
+    def fetchmany(self, size: _Optional[int] = None) -> _Sequence[_Sequence[_Any]] | _Sequence[None]:
+        if size is None:
+            size = self.arraysize
         return self.raw.fetchmany(size)
 
-    def fetchall(self):
+    def fetchall(self) -> _Sequence[_Sequence[_Any]]:
         return self.raw.fetchall()
 
     def nextset(self):
         return self.raw.nextset()
 
-    def setinputsizes(self, sizes):
-        return self.raw.setinputsizes(sizes)
+    def setinputsizes(self, sizes: _Sequence[int | type]) -> None:
+        self.raw.setinputsizes(sizes)
 
-    def setoutputsize(self, column=None):
+    def setoutputsize(self, size: int, column: _Optional[int] = None) -> None:
         if column is None:
-            return self.raw.setoutputsize()
+            self.raw.setoutputsize(size)
         else:
-            return self.raw.setoutputsize(column)
+            self.raw.setoutputsize(size, column)
 
-    def into(self, target):
+    def into(self, target: _Target) -> _Any:
         while True:
             value = self._into(target)
             if value is None:
                 break
             yield value
 
-    def into1(self, target):
+    def into1(self, target: _Target) -> _Any:
         ret = self._into(target)
         # XXX - some interfaces always return -1 for rowcount
         if abs(self.raw.rowcount) != 1:
@@ -144,7 +148,7 @@ class Cursor:
             raise UnexpectedResultError("unexpected lack of results")
         return ret
 
-    def _into(self, target):
+    def _into(self, target: _Target) -> _Optional[_Any]:
         row = self.raw.fetchone()
         # XXX - this test is ugly, but it is the easiest way to make something
         # be concise on the user end.
@@ -172,11 +176,11 @@ def connect(mod, *args, **kwargs):
        return am abnormal Connection object."""
     return Connection(mod.connect(*args, **kwargs), mod.paramstyle, _driver_for(mod))
 
-def mapping(**kwargs):
+def mapping(**kwargs) -> _Any:
     "For returning a mapping with .into()"
     return kwargs
 
-def scalar(**kwargs):
+def scalar(**kwargs) -> _Any:
     "For returning a 1-column row as a scalar."
     ncols = len(kwargs)
     if ncols == 1:
@@ -184,11 +188,11 @@ def scalar(**kwargs):
     else:
         raise UnexpectedResultError(f"unexpected column count of {ncols}")
 
-def sequence(**kwargs):
+def sequence(**kwargs) -> _Any:
     "For returning a row as a sequence."
     # This should never be called directly; it is merely detected.
     raise NotImplementedError("sequence should never be called directly")
 
-def namespace(**kwargs):
+def namespace(**kwargs) -> _Any:
     "For returning a namespace."
     return Namespace(kwargs)

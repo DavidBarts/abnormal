@@ -3,12 +3,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from io import StringIO
 from types import ModuleType
-from typing import Optionsl
+from typing import Optional
 
-from .dbtype import DbType, DBTYPES
+from ..dbtype import DbType, DBTYPES
 from .standard import StandardDriver
 from .db2 import Db2Driver
 from .oracle import OracleDriver
+from .sqlite3 import Sqlite3Driver
 
 @dataclass
 class RowSchema:
@@ -40,7 +41,7 @@ class Driver(ABC):
             buf.write('"')
             return buf.getvalue()
 
-_DRIVERS: dict[DbType, Callable[[], Driver]] = {
+_DRIVERS: dict[DbType, Driver] = {
     DbType.DB2: Db2Driver(),
     DbType.SQL_SERVER: StandardDriver("table_catalog", "current_catalog"),
     DbType.MYSQL: StandardDriver("table_schema", "database()"),

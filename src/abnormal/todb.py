@@ -4,7 +4,7 @@
 
 # I m p o r t s
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,7 +22,7 @@ _INITIALS = {
 
 # Also see below at end of file.
 
-type Params = list[Any] | dict[str, Any]
+type Params = MutableSequence[Any] | MutableMapping[str, Any]
 
 # C l a s s e s
 
@@ -32,15 +32,15 @@ class CacheKey:
     paramstyle: str
 
 class CacheValue:
-    def __init__(self, rawsql, names):
+    def __init__(self, rawsql: Sequence[str], names: Sequence[str]):
         self.sql = ''.join(rawsql)
         self.names = names
 
 class QueryConverter:
     def __init__(self):
-        self._qcache: map[CacheKey, CacheValue] = {}
+        self._qcache: dict[CacheKey, CacheValue] = {}
 
-    def convert(self, query: str, params: Any, paramstyle: str):
+    def convert(self, query: str, params: Any, paramstyle: str) -> tuple[str, Params]:
         "Convert query and params from vendor-neutral to database-specific form."
         key = CacheKey(query, paramstyle)
         if key in self._qcache:
@@ -49,10 +49,12 @@ class QueryConverter:
             cached = self._qcache[key] = _CONVERTERS[paramstyle](query, params)
         return self._convert(cached, params, _INITIALS[paramstyle], _APPENDERS[paramstyle])
 
-def _convert(self, cached: CacheValue, params: Any, initial_params: Callable[[], Params], append_params: Callable[[Params, Any, str], None]) -> tuple[str, Params]:
+    def _convert(self, cached: CacheValue, params: Any, initial_params: Callable[[], Params], append_params: Appender) -> tuple[str, Params]:
         returned_params = initial_params()
         for name in cached.names:
-            append_params(returned_params, params, name)
+            # Not a problem due to program logic, but Mypy is too stupid
+            # to understand that.
+            append_params(returned_params, params, name)  # type: ignore
         return (cached.sql, returned_params)
 
 # F u n c t i o n s
@@ -72,9 +74,9 @@ def _positional(query: str, params: Any, repl: str) -> CacheValue:
 # style apparently use 1-based indexing. See:
 # https://github.com/python/cpython/issues/99953
 def _numeric(query: str, params: Any) -> CacheValue:
-    rquery = []
-    rnames = []
-    index = {}
+    rquery: list[str] = []
+    rnames: list[str] = []
+    index: MutableMapping[str, str] = {}
     for token in tlexer(query):
         if token.is_param:
             name = _getname(token.value)
@@ -108,16 +110,18 @@ def _getparam(params: Any, name: str) -> Any:
     else:
         return getattr(params, name)
 
-def _to_list(accum: list[Any], params: Any, name: str) -> None:
+def _to_list(accum: MutableSequence[Any], params: Any, name: str) -> None:
     accum.append(_getparam(params, name))
 
-def _to_dict(accum: dict[str, Any], params: Any, name: str) -> None:
+def _to_dict(accum: MutableMapping[str, Any], params: Any, name: str) -> None:
     if name not in accum:
         accum[name] = _getparam(params, name)
 
 # Can only be defined after all internal functions are fully defined.
 
-_APPENDERS = {
+type Appender = Callable[[MutableSequence[Any], Any, str], None] | Callable[[MutableMapping[str, Any], Any, str], None]
+
+_APPENDERS: Mapping[str, Appender] = {
     'qmark': _to_list,
     'format': _to_list,
     'numeric': _to_list,
@@ -125,7 +129,9 @@ _APPENDERS = {
     'pyformat': _to_dict
 }
 
-_CONVERTERS = {
+type Converter = Callable[[str, Params], CacheValue]
+
+_CONVERTERS: Mapping[str, Converter] = {
     'qmark': lambda q, p: _positional(q, p, '?'),
     'format': lambda q, p: _positional(q, p, '%s'),
     'numeric': _numeric,

@@ -8,15 +8,16 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
 from .driver import driver_for
-from .todb import convert
+from .exceptions import IncompleteDataError
 
 class _PendingOperation(ABC):
-    def __init__(self, cursor: Any, table: str, mandatory_pk: bool):
+    def __init__(self, cursor: Any, table: str, obj: Any, mandatory_pk: bool):
         self.cursor = cursor
         self.table = table
         self.mandatory_pk = mandatory_pk
-        self._inc = set()
-        self._exc = set()
+        self._obj = obj
+        self._inc: set[str] = set()
+        self._exc: set[str] = set()
         self._init_names(obj)
         self._init_casemap()
         self._init_row_schema()
@@ -33,7 +34,7 @@ class _PendingOperation(ABC):
             self._names = tuple(vars(obj).keys())
 
     def _init_casemap(self) -> None:
-        self._casemap = {}
+        self._casemap: dict[str, str] = {}
         ambiguous = set()
         for name in self._names:
             lcname = name.lower()
@@ -56,10 +57,10 @@ class _PendingOperation(ABC):
     def _domap(self, columns: list[str], mandatory: bool) -> list[str]:
         ret = []
         for column in columns:
-            result = self.find(column)
+            result = self._find(column)
             if result is None:
                 if mandatory:
-                    raise IncompleteDataError(f"Primary key column {pkc!r} missing from data source.")
+                    raise IncompleteDataError(f"Primary key column {column!r} missing from data source.")
                 else:
                     continue
             ret.append(column)
@@ -74,9 +75,9 @@ class _PendingOperation(ABC):
         return None
 
     def _dofind(self, name: str) -> Optional[str]:
-        if isinstance(self.obj, Mapping) and name in self.obj:
+        if isinstance(self._obj, Mapping) and name in self._obj:
             return name
-        if hasattr(self.obj, name):
+        if hasattr(self._obj, name):
             return name
         return None
 
@@ -103,12 +104,17 @@ class _PendingOperation(ABC):
         return self
 
     def _filter(self, unfiltered: Sequence[str]):
-        if self.inc:
-            return [ x for x in unfiltered if x in self.inc ]
-        elif self.exc:
-            return [ x for x in unfiltered if x not in self.exc ]
+        if self._inc:
+            return [ x for x in unfiltered if x in self._inc ]
+        elif self._exc:
+            return [ x for x in unfiltered if x not in self._exc ]
         else:
             return unfiltered
+
+    def _mustfind(self, unmapped: str) -> str:
+        ret = self._find(unmapped)
+        assert ret is not None
+        return ret
 
 # It is not mandatory to fully specify (or even specify at all) the primary
 # key when inserting, because database tables commonly have rules for
@@ -121,12 +127,12 @@ class InsertOperation(_PendingOperation):
         cols = self._filter(self._pk_columns + self._columns)
         query = [
             "insert into", self.cursor.driver.quote_identifier(self.table),
-            "(", ", ".join([ driver.quote_identifier(x) for x in cols ]), ")",
+            "(", ", ".join([ self.cursor.driver.quote_identifier(x) for x in cols ]), ")",
             "values",
-            "(", ", ".join([ ':' + self.find(x) for x in cols ]), ")"
+            "(", ", ".join([ ':' + self._mustfind(x) for x in cols ]), ")"
         ]
 
-        return self.cursor.execute(" ".join(query), params)
+        return self.cursor.execute(" ".join(query), self._obj)
 
 # It is mandatory to fully specify the primary key when updating, to avoid
 # accidentally overwriting a lot of data. (Those who really do want to
@@ -147,7 +153,7 @@ class UpdateOperation(_PendingOperation):
                 needs_comma = True
             query.append(self.cursor.driver.quote_identifier(col))
             query.append(" = :")
-            query.append(self.find(col))
+            query.append(self._mustfind(col))
 
         query.append(" where")
         needs_and = False
@@ -159,6 +165,6 @@ class UpdateOperation(_PendingOperation):
                 needs_comma = True
             query.append(self.cursor.driver.quote_identifier(col))
             query.append(" = :")
-            query.append(self.find(col))
+            query.append(self._mustfind(col))
 
-        return self.cursor.execute("".join(query), vals)
+        return self.cursor.execute("".join(query), self._obj)

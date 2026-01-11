@@ -1,8 +1,10 @@
 # Exceptions. We always throw Error or one of its subclasses, and always
 # try to wrap other exceptions in one of our own.
 
+from typing import Optional
+
 class Error(Exception):
-    def __init__(self, reason: str = None):
+    def __init__(self, reason: Optional[str] = None):
         self.reason = reason
         super().__init__()
 
@@ -36,4 +38,11 @@ class IncompleteDataError(Error):
     """
     When an .insert_into or .update is fed inufficient data, i.e. data
     with a missing or incomplete primary key.
+    """
+
+class InterfaceError(Error):
+    """
+    Something went wrong attempting to interface with the database.
+    Currently used to report a failure to determine primary key columns
+    in a table.
     """

@@ -11,7 +11,7 @@ from .ply import lex
 from dataclasses import dataclass
 import re
 
-from .exceptions import ProgrammingError
+from .exceptions import SqlError
 
 # V a r i a b l e s
 
