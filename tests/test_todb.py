@@ -2,7 +2,7 @@
 
 import unittest
 from dataclasses import dataclass
-import abnormal.todb import QueryConverter
+from abnormal.todb import QueryConverter
 
 # C l a s s e s
 
@@ -83,18 +83,18 @@ class TestTodb(unittest.TestCase):
 
     def test_badrefs(self):
         query = "select * from suppliers where sno = :gunk"
-        self.assertRaises(AttributeError, todb.convert, query, _STDOBJ, 'qmark')
-        self.assertRaises(KeyError, todb.convert, query, _STDREC, 'qmark')
+        self.assertRaises(AttributeError, self.converter.convert, query, _STDOBJ, 'qmark')
+        self.assertRaises(KeyError, self.converter.convert, query, _STDREC, 'qmark')
 
     def test_caching(self):
         query = "select * from parts where pno = :pno"
         pno = "p1"
         before = len(self.converter._qcache)
-        result1 = todb.convert(query, locals(), 'qmark')
+        result1 = self.converter.convert(query, locals(), 'qmark')
         after = len(self.converter._qcache)
         self.assertGreater(after, before)
-        result2 = todb.convert(query, locals(), 'qmark')
-        self.assertEqual(len(todb._qcache), after)
+        result2 = self.converter.convert(query, locals(), 'qmark')
+        self.assertEqual(len(self.converter._qcache), after)
         self.assertEqual(result1, result2)
 
 # M a i n   P r o g r a m

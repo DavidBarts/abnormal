@@ -92,7 +92,8 @@ class Cursor:
         self.raw.close()
 
     def __del__(self):
-        self.raw.__del__()
+        if hasattr(self.raw, '__del__'):
+            self.raw.__del__()
 
     def execute(self, operation: str, params={}):
         self.raw.execute(*self._converter.convert(operation, params, self.connection._paramstyle))
@@ -104,7 +105,7 @@ class Cursor:
 
     def executemany(self, operation: str, seq: _Sequence[_Any]):
         # TODO: see if we can make this sequence evaluation lazy (should we?)
-        rseq = [ self._converter.convert(operation, params, self.connection.paramstyle) for params in seq ]
+        rseq = [ self._converter.convert(operation, params, self.connection._paramstyle) for params in seq ]
         if rseq:
             self.raw.executemany(rseq[0][0], [ x[1] for x in rseq ])
         self._colnames = []  # results not allowed here
