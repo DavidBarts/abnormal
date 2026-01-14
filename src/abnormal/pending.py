@@ -7,25 +7,41 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
-from .driver import driver_for
 from .exceptions import IncompleteDataError
 
 class _PendingOperation(ABC):
-    def __init__(self, cursor: Any, table: str, obj: Any, mandatory_pk: bool):
+    def __init__(self, cursor: Any, table: str, mandatory_pk: bool):
         self.cursor = cursor
         self.table = table
         self.mandatory_pk = mandatory_pk
-        self._obj = obj
         self._inc: set[str] = set()
         self._exc: set[str] = set()
+
+    @abstractmethod
+    def from_source(self, obj: Any) -> Optional[Any]:
+        ...
+
+    def _from_source(self, obj: Any) -> None:
+        self._set_data_object(obj)
+        self._check_inc_exc()
+
+    def _set_data_object(self, obj: Any) -> None:
+        self._obj = obj
         self._init_names(obj)
         self._init_casemap()
         self._init_row_schema()
         self._map_columns()
 
-    @abstractmethod
-    def from_source(self, obj: Any) -> Optional[Any]:
-        ...
+    def _check_inc_exc(self) -> None:
+        if not self.mandatory_pk:
+            return  # we don't care if PK's are missing
+        for pk_column in self._pk_columns:
+            if self._inc and pk_column not in self._inc:
+                raise IncompleteDataError("Must include primary key column {pk_column!r}.")
+            if self._exc and pk_column in self._exc:
+                raise IncompleteDataError("Must not exclude primary key column {pk_column!r}.")
+
+
 
     def _init_names(self, obj: Any) -> None:
         if isinstance(obj, Mapping):
@@ -48,7 +64,7 @@ class _PendingOperation(ABC):
             del self._casemap[a]
 
     def _init_row_schema(self) -> None:
-        self._row_schema = self.cursor.driver.row_schema(self.table)
+        self._row_schema = self.cursor.connection._driver.row_schema(self.cursor.connection, self.table)
 
     def _map_columns(self) -> None:
         self._pk_columns = self._domap(self._row_schema.primary, self.mandatory_pk)
@@ -82,25 +98,15 @@ class _PendingOperation(ABC):
         return None
 
     def including(self, *args: str) -> _PendingOperation:
-        temp = set(args)
-        if self.mandatory_pk:
-            for pk_column in self._pk_columns:
-                if pk_column not in temp:
-                    raise ValueError("Must include primary key column {pk_column!r}.")
-        self._inc = temp
+        self._inc = set(args)
         if self._exc:
             self._exc = set()
         return self
 
     def excluding(self, *args: str) -> _PendingOperation:
-        temp = set(args)
-        if self.mandatory_pk:
-            for pk_column in self._pk_columns:
-                if pk_column in temp:
-                    raise ValueError("Cannot exclude primary key column {pk_column!r}.")
         if self._inc:
             self._inc = set()
-        self._exc = temp
+        self._exc = set(args)
         return self
 
     def _filter(self, unfiltered: Sequence[str]):
@@ -124,10 +130,11 @@ class InsertOperation(_PendingOperation):
         super().__init__(cursor, table, False)
 
     def from_source(self, obj: Any) -> Optional[Any]:
+        self._from_source(obj)
         cols = self._filter(self._pk_columns + self._columns)
         query = [
-            "insert into", self.cursor.driver.quote_identifier(self.table),
-            "(", ", ".join([ self.cursor.driver.quote_identifier(x) for x in cols ]), ")",
+            "insert into", self.cursor.connection._driver.quote_identifier(self.table),
+            "(", ", ".join([ self.cursor.connection._driver.quote_identifier(x) for x in cols ]), ")",
             "values",
             "(", ", ".join([ ':' + self._mustfind(x) for x in cols ]), ")"
         ]
@@ -142,7 +149,8 @@ class UpdateOperation(_PendingOperation):
         super().__init__(cursor, table, True)
 
     def from_source(self, obj: Any) -> Optional[Any]:
-        query = [ "update ", self.cursor.driver.quote_identifier(self.table), " set" ]
+        self._from_source(obj)
+        query = [ "update ", self.cursor.connection._driver.quote_identifier(self.table), " set" ]
 
         needs_comma = False
         for col in self._filter(self._columns):
@@ -151,7 +159,7 @@ class UpdateOperation(_PendingOperation):
             else:
                 query.append(" ")
                 needs_comma = True
-            query.append(self.cursor.driver.quote_identifier(col))
+            query.append(self.cursor.connection._driver.quote_identifier(col))
             query.append(" = :")
             query.append(self._mustfind(col))
 
@@ -163,7 +171,7 @@ class UpdateOperation(_PendingOperation):
             else:
                 query.append(" ")
                 needs_comma = True
-            query.append(self.cursor.driver.quote_identifier(col))
+            query.append(self.cursor.connection._driver.quote_identifier(col))
             query.append(" = :")
             query.append(self._mustfind(col))
 

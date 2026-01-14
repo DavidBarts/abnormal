@@ -30,7 +30,8 @@ class Driver(ABC):
     # it here future-proofs us because we can override on braindamaged
     # DBMS's.
     def quote_identifier(self, unquoted):
-        with StringIO('"') as buf:
+        with StringIO() as buf:
+            buf.write('"')
             for ch in unquoted:
                 if ch == '"':
                     buf.write('""')
