@@ -123,8 +123,6 @@ class TestUpdatesInserts(unittest.TestCase):
         for i in range(5):
             RESULTS.description.append([])
         RESULTS.description.append([('COLUMN_NAME', str, None, None, None, None, None)])
-        RESULTS.description.append([('COLUMN_NAME', str, None, None, None, None, None)])
-        RESULTS.description.append([('cols.table_name', str, None, None, None, None, None)])
         RESULTS.description.append([('cols.table_name', str, None, None, None, None, None)])
         expected_query_2 = 'insert into "suppliers" ( "sno", "name", "status", "city" ) values ( :sno, :name, :status, :city )'
         curs.insert_into("suppliers").from_source(DATA_SOURCE)
@@ -163,14 +161,13 @@ class TestUpdatesInserts(unittest.TestCase):
         expected_query_2 = 'insert into "suppliers" ( "sno", "name", "status", "city" ) values ( ?, ?, ?, ? )'
         for i in range(5):
             RESULTS.description.append([])
-        for i in range(2):
-            RESULTS.description.append([
-                ('cid', int, None, None, None, None, None),
-                ('name', str, None, None, None, None, None),
-                ('type', str, None, None, None, None, None),
-                ('notnull', str, None, None, None, None, None),
-                ('dflt_value', str, None, None, None, None, None),
-                ('pk', str, None, None, None, None, None),
+        RESULTS.description.append([
+            ('cid', int, None, None, None, None, None),
+            ('name', str, None, None, None, None, None),
+            ('type', str, None, None, None, None, None),
+            ('notnull', str, None, None, None, None, None),
+            ('dflt_value', str, None, None, None, None, None),
+            ('pk', str, None, None, None, None, None),
             ])
         curs.insert_into("suppliers").from_source(DATA_SOURCE)
         msg = MESSAGE.pop()

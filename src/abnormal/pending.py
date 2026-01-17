@@ -16,6 +16,7 @@ class _PendingOperation(ABC):
         self.mandatory_pk = mandatory_pk
         self._inc: set[str] = set()
         self._exc: set[str] = set()
+        self._row_schema = None
 
     @abstractmethod
     def from_source(self, obj: Any) -> Optional[Any]:
@@ -64,7 +65,8 @@ class _PendingOperation(ABC):
             del self._casemap[a]
 
     def _init_row_schema(self) -> None:
-        self._row_schema = self.cursor.connection._driver.row_schema(self.cursor.connection, self.table)
+        if self._row_schema is None:
+            self._row_schema = self.cursor.connection._driver.row_schema(self.cursor.connection, self.table)
 
     def _map_columns(self) -> None:
         self._pk_columns = self._domap(self._row_schema.primary, self.mandatory_pk)

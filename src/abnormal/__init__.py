@@ -97,10 +97,11 @@ class Cursor:
 
     def execute(self, operation: str, params={}):
         self.raw.execute(*self._converter.convert(operation, params, self.connection._paramstyle))
-        if self.raw.description is None:
+        descr = self.raw.description
+        if descr is None:
             self._colnames = []
         else:
-            self._colnames = [ x[0].lower() for x in self.raw.description ]
+            self._colnames = [ x[0].lower() for x in descr ]
         return self
 
     def executemany(self, operation: str, seq: _Sequence[_Any]):
