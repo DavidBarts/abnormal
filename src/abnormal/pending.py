@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
-from .exceptions import IncompleteDataError
+from .exceptions import IncompleteDataError, InvalidStateError
 
 class _PendingOperation(ABC):
     def __init__(self, cursor: Any, table: str, mandatory_pk: bool):
@@ -100,14 +100,14 @@ class _PendingOperation(ABC):
         return None
 
     def including(self, *args: str) -> _PendingOperation:
-        self._inc = set(args)
         if self._exc:
-            self._exc = set()
+            raise InvalidStateError("May not use .including when excluding.")
+        self._inc = set(args)
         return self
 
     def excluding(self, *args: str) -> _PendingOperation:
         if self._inc:
-            self._inc = set()
+            raise InvalidStateError("May not use .excluding when including.")
         self._exc = set(args)
         return self
 

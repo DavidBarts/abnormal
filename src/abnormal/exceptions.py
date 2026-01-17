@@ -46,3 +46,11 @@ class InterfaceError(Error):
     Currently used to report a failure to determine primary key columns
     in a table.
     """
+
+class InvalidStateError(Error):
+    """
+    When the user attempts to do something for which the state of an
+    object is not valid. Currently used to report an attempt to use the
+    mutually-exclusive .including and .excluding modifiers to a
+    PendingOperation.
+    """

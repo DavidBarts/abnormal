@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from abnormal import Connection, Cursor
 from abnormal.driver import StandardDriver, Db2Driver, OracleDriver, Sqlite3Driver
+from abnormal.exceptions import IncompleteDataError, InvalidStateError
 
 from dummydb.common import CursorResults, RESULTS, Message, MESSAGE
 import dummydb.format
@@ -181,56 +182,471 @@ class TestUpdatesInserts(unittest.TestCase):
         curs.close()
         conn.close()
 
+    def test_insert_numeric(self):
+        conn = Connection(dummydb.numeric.Connection(), dummydb.numeric.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = :1 and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "sno", "name", "status", "city" ) values ( :1, :2, :3, :4 )'
+        curs.insert_into("suppliers").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
+
+    def test_insert_format(self):
+        conn = Connection(dummydb.format.Connection(), dummydb.format.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = %s and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "sno", "name", "status", "city" ) values ( %s, %s, %s, %s )'
+        curs.insert_into("suppliers").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
+
     def test_insert_explicit_database(self):
-        # Just pick one of the types and test it... for now
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = ? order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "example.suppliers" ( "sno", "name", "status", "city" ) values ( ?, ?, ?, ? )'
+        curs.insert_into("example.suppliers").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
 
     def test_insert_excluding_norm(self):
-        # curs.insert_into("suppliers").excluding("name").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "sno", "status", "city" ) values ( ?, ?, ? )'
+        curs.insert_into("suppliers").excluding("name").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
 
     def test_insert_exluding_pk(self):
         # should not be summarily rejected, often legal!
-        # curs.insert_into("suppliers").excluding("sno").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "name", "status", "city" ) values ( ?, ?, ? )'
+        curs.insert_into("suppliers").excluding("sno").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
 
     def test_insert_excluding_mult(self):
-        # curs.insert_into("suppliers").excluding("sno", "name").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "status", "city" ) values ( ?, ? )'
+        curs.insert_into("suppliers").excluding("sno", "name").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
 
     def test_insert_excluding_mult_rev(self):
-        # curs.insert_into("suppliers").excluding("name", "sno").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "status", "city" ) values ( ?, ? )'
+        curs.insert_into("suppliers").excluding("name", "sno").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
+
+    def test_insert_including_pk(self):
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "sno", "status", "city" ) values ( ?, ?, ? )'
+        curs.insert_into("suppliers").including("sno", "status", "city").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
+
+    def test_insert_not_including_pk(self):
+        # should work!
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "status", "city" ) values ( ?, ? )'
+        curs.insert_into("suppliers").including("status", "city").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
+
+    def test_update_including_excluding(self):
+        # should be rejected w/ InvalidStateError
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'insert into "suppliers" ( "status", "city" ) values ( ?, ? )'
+        with self.assertRaises(InvalidStateError):
+            curs.insert_into("suppliers").including("status", "city").excluding("sno").from_source(DATA_SOURCE)
+        curs.close()
+        conn.close()
 
     def test_update_normal(self):
-        # curs.update("suppliers").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "name" = ?, "status" = ?, "city" = ? where "sno" = ?'
+        curs.update("suppliers").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
 
     def test_update_excluding_normal(self):
-        # curs.update("suppliers").excluding("name").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "status" = ?, "city" = ? where "sno" = ?'
+        curs.update("suppliers").excluding("name").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
 
     def test_update_excluding_pk(self):
-        # should be summarily rejected, pk is needed!
-        # curs.update("suppliers").excluding("sno").from_source(DATA_SOURCE)
-        pass
+        # should be summarily rejected, pk is needed here!
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "status" = ?, "city" = ? where "sno" = ?'
+        with self.assertRaises(IncompleteDataError):
+            curs.update("suppliers").excluding("sno").from_source(DATA_SOURCE)
+        curs.close()
+        conn.close()
         
     def test_update_excluding_mult(self):
-        # curs.update("suppliers").excluding("name", "city").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "status" = ? where "sno" = ?'
+        curs.update("suppliers").excluding("name", "city").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
 
     def test_update_excluding_mult_rev(self):
-        # curs.update("suppliers").excluding("city", "name").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "status" = ? where "sno" = ?'
+        curs.update("suppliers").excluding("city", "name").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
 
     def test_update_excluding_mult_pk(self):
         # should also be rejected
-        # curs.update("suppliers").excluding("name", "sno").from_source(DATA_SOURCE)
-        pass
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "status" = ?, "city" = ? where "sno" = ?'
+        with self.assertRaises(IncompleteDataError):
+            curs.update("suppliers").excluding("name", "sno").from_source(DATA_SOURCE)
+        curs.close()
+        conn.close()
 
-# Need to test the other drivers besides the standard one.
-# Need to test the standard one w/ other params.
-# Can we grab from the dict?
+    def test_update_including_pk(self):
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "name" = ?, "status" = ? where "sno" = ?'
+        curs.update("suppliers").including("sno", "name", "status").from_source(DATA_SOURCE)
+        msg = MESSAGE.pop()
+        self.assertEqual(msg.source, "cursor execute")
+        self.assertEqual(msg.details['operation'], expected_query_2)
+        while True:
+            msg = MESSAGE.pop()
+            if msg.source == "cursor execute":
+                break
+        self.assertEqual(msg.details['operation'], expected_query_1)
+        curs.close()
+        conn.close()
+
+    def test_update_not_including_pk(self):
+        # should be rejected w/ IncompleteDataError
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "name" = ?, "status" = ? where "sno" = ?'
+        with self.assertRaises(IncompleteDataError):
+            curs.update("suppliers").including("name", "status").from_source(DATA_SOURCE)
+        curs.close()
+        conn.close()
+
+    def test_update_including_excluding(self):
+        # should be rejected w/ InvalidStateError
+        conn = Connection(dummydb.qmark.Connection(), dummydb.qmark.paramstyle, StandardDriver("table_schema", "database()"))
+        curs = conn.cursor()
+        expected_query_1 = "select column_name, column_key from information_schema.columns where table_name = ? and table_schema = database() order by ordinal_position asc"
+        needed_data = [('sno', 'PRI'), ('name', ''), ('status', ''), ('city', '')]
+        RESULTS.execute.append([])
+        RESULTS.execute.append([])
+        RESULTS.fetchone.append(None)
+        for i in reversed(needed_data):
+            RESULTS.fetchone.append(i)
+        for i in range(5):
+            RESULTS.description.append([])
+        RESULTS.description.append([('column_name', str, None, None, None, None, None), ('column_key', str, None, None, None, None, None)])
+        expected_query_2 = 'update "suppliers" set "name" = ?, "status" = ? where "sno" = ?'
+        with self.assertRaises(InvalidStateError):
+            curs.update("suppliers").including("sno", "name", "status").excluding("sno").from_source(DATA_SOURCE)
+        curs.close()
+        conn.close()
 
 # M a i n   P r o g r a m
 
