@@ -80,7 +80,7 @@ class OracleDriver(Driver):
     def row_schema(self, connection, table_name: str) -> RowSchema:
         dbname, tabname = self.split_table_name(table_name.upper())
 
-        cursor = connection.cursor
+        cursor = connection.cursor()
         scalar = import_module("abnormal").scalar
         try:
             if dbname:

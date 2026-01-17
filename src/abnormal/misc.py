@@ -1,7 +1,7 @@
 # Based on the one in the argparse library.
 class Namespace:
     def __init__(self, mapping):
-        for key, value in mapping:
+        for key, value in mapping.items():
             setattr(self, key, value)
 
     def __eq__(self, other):

@@ -53,9 +53,12 @@ class Connection:
 class Cursor:
     def __init__(self):
         _log_use("cursor __init__")
-        self.description = None
         self.rowcount = -1
         self.arraysize = 1
+
+    @property
+    def description(self):
+        return RESULTS.description.pop()
 
     def callproc(self, procname: str, parameters: Sequence) -> Sequence:
         _log_use("cursor callproc", **locals())
@@ -94,7 +97,11 @@ class Cursor:
         _log_use("cursor setinputsizes", **locals())
 
     def setoutputsize(self, size:int, column: Optional[str] = None) -> None:
-        _log_use("cursor setoutputsize", **locale())
+        _log_use("cursor setoutputsize", **locals())
+
+# Mocking of the input and outputs is shamelessly unithreaded. Due to how
+# cursors are the store of thread-private data, and how they are created
+# one-off all over the place, doing it any other way would be painful.
 
 @dataclass
 class CursorResults:
@@ -105,6 +112,7 @@ class CursorResults:
     fetchmany: list[Sequence[Sequence] | Sequence] = field(default_factory=list)
     fetchall: list[Sequence[Sequence] | Sequence] = field(default_factory=list)
     nextset: list[Optional[bool]] = field(default_factory=list)
+    description: list[Sequence[tuple[str, type, None, None, None, None, None]]] = field(default_factory=list)
 
     def clear(self):
         self.callproc.clear()
@@ -114,6 +122,7 @@ class CursorResults:
         self.fetchmany.clear()
         self.fetchall.clear()
         self.nextset.clear()
+        self.description.clear()
 
 RESULTS = CursorResults()
 
