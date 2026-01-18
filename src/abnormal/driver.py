@@ -6,19 +6,11 @@ from io import StringIO
 from types import ModuleType
 from typing import Optional
 
+from .base import DriverBase, RowSchema
 from .dbtype import DbType, DBTYPES
 from .exceptions import InterfaceError
 
-@dataclass
-class RowSchema:
-    primary: tuple[str]
-    others: tuple[str]
-
-class Driver(ABC):
-    @abstractmethod
-    def row_schema(self, connection, table_name: str) -> RowSchema:
-        ...
-
+class Driver(DriverBase):
     def split_table_name(self, unsplit: str) -> tuple[Optional[str], str]:
         n1, _, n2 = unsplit.partition(".")
         if n2:
@@ -29,7 +21,7 @@ class Driver(ABC):
     # I think this should work everyplace; it is the standard. But putting
     # it here future-proofs us because we can override on braindamaged
     # DBMS's.
-    def quote_identifier(self, unquoted):
+    def quote_identifier(self, unquoted: str) -> str:
         with StringIO() as buf:
             buf.write('"')
             for ch in unquoted:

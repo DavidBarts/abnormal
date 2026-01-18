@@ -6,7 +6,7 @@ from collections.abc import Iterator as _Iterator, Mapping as _Mapping, Sequence
 from typing import Any as _Any, Callable as _Callable, Optional as _Optional, Unpack as _Unpack
 from types import ModuleType as _ModuleType
 
-from .base import ConnectionBase as _ConnectionBase, CursorBase as _CursorBase, Target as _Target
+from .base import ConnectionBase as _ConnectionBase, CursorBase as _CursorBase, Target as _Target, PendingOperationBase as _PendingOperationBase
 from .driver import driver_for as _driver_for, Driver
 from .exceptions import Error, UnexpectedResultError, SqlError, IncompleteDataError
 from .misc import Namespace
@@ -56,10 +56,10 @@ class Connection(_ConnectionBase):
         cursor = self.cursor()
         cursor.executemany(query, seq)
 
-    def insert_into(self, table: str) -> InsertOperation:
+    def insert_into(self, table: str) -> _PendingOperationBase:
         return self.cursor().insert_into(table)
 
-    def update(self, table: str) -> UpdateOperation:
+    def update(self, table: str) -> _PendingOperationBase:
         return self.cursor().update(table)
 
 class Cursor(_CursorBase):

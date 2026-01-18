@@ -4,11 +4,11 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
-from .base import CursorBase
+from .base import CursorBase, PendingOperationBase
 from .exceptions import IncompleteDataError, InvalidStateError
 from .driver import RowSchema
 
-class _PendingOperation(ABC):
+class _PendingOperation(PendingOperationBase):
     def __init__(self, cursor: CursorBase, table: str, mandatory_pk: bool) -> None:
         self.cursor = cursor
         self.table = table
@@ -16,10 +16,6 @@ class _PendingOperation(ABC):
         self._inc: set[str] = set()
         self._exc: set[str] = set()
         self._row_schema: Optional[RowSchema] = None
-
-    @abstractmethod
-    def from_source(self, obj: Any) -> Optional[Any]:
-        ...
 
     def _from_source(self, obj: Any) -> None:
         self._set_data_object(obj)
@@ -40,8 +36,6 @@ class _PendingOperation(ABC):
                 raise IncompleteDataError("Must include primary key column {pk_column!r}.")
             if self._exc and pk_column in self._exc:
                 raise IncompleteDataError("Must not exclude primary key column {pk_column!r}.")
-
-
 
     def _init_names(self, obj: Any) -> None:
         if isinstance(obj, Mapping):
