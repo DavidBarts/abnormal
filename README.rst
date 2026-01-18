@@ -203,7 +203,7 @@ With both convenience methods, column names are matched up to attribute
 or key names (case insensitively, if need be); the match must be
 non-ambiguous (e.g. if the data source contains both ``sno`` and
 ``SNO``, the match will fail). The information in the database's own
-internal schema is be used to accomplish this.
+internal schema is used to accomplish this.
 
 Rows to update are located by primary key, so all primary key fields
 must have a corresponding item in the data source, else
