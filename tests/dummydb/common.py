@@ -136,9 +136,11 @@ class Message:
 MESSAGE: list[Message] = []
 
 def _log_use(what, **kwargs):
-    print_args = [ "DUMMY:", what ]
-    for k, v in kwargs.items():
-        print_args.append(", " + k + " =")
-        print_args.append(repr(v))
-    print(*print_args)
+    # Uncomment the following lines to get verbose logging during
+    # test_zupins.
+    # print_args = [ "DUMMY:", what ]
+    # for k, v in kwargs.items():
+    #     print_args.append(", " + k + " =")
+    #     print_args.append(repr(v))
+    # print(*print_args)
     MESSAGE.append(Message(source=what, details=kwargs))
