@@ -37,7 +37,7 @@ class CacheValue:
         self.names = names
 
 class QueryConverter:
-    def __init__(self):
+    def __init__(self) -> None:
         self._qcache: dict[CacheKey, CacheValue] = {}
 
     def convert(self, query: str, params: Any, paramstyle: str) -> tuple[str, Params]:

@@ -1,6 +1,9 @@
+from collections.abc import Mapping
+from typing import Any
+
 # Based on the one in the argparse library.
 class Namespace:
-    def __init__(self, mapping):
+    def __init__(self, mapping: Mapping[str, Any]) -> None:
         for key, value in mapping.items():
             setattr(self, key, value)
 

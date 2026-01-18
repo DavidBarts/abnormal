@@ -4,7 +4,7 @@
 from typing import Optional
 
 class Error(Exception):
-    def __init__(self, reason: Optional[str] = None):
+    def __init__(self, reason: Optional[str] = None) -> None:
         self.reason = reason
         super().__init__()
 

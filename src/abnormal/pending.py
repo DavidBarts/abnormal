@@ -1,22 +1,21 @@
 # Insert (insert_into) and update operations support.
-# XXX - we don't use type declarations here in constructors (and possibly
-# strategically elsewhere) because using them raises circular import
-# issues.
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
+from .base import CursorBase
 from .exceptions import IncompleteDataError, InvalidStateError
+from .driver import RowSchema
 
 class _PendingOperation(ABC):
-    def __init__(self, cursor: Any, table: str, mandatory_pk: bool):
+    def __init__(self, cursor: CursorBase, table: str, mandatory_pk: bool) -> None:
         self.cursor = cursor
         self.table = table
         self.mandatory_pk = mandatory_pk
         self._inc: set[str] = set()
         self._exc: set[str] = set()
-        self._row_schema = None
+        self._row_schema: Optional[RowSchema] = None
 
     @abstractmethod
     def from_source(self, obj: Any) -> Optional[Any]:
@@ -69,10 +68,11 @@ class _PendingOperation(ABC):
             self._row_schema = self.cursor.connection._driver.row_schema(self.cursor.connection, self.table)
 
     def _map_columns(self) -> None:
+        assert self._row_schema is not None
         self._pk_columns = self._domap(self._row_schema.primary, self.mandatory_pk)
         self._columns = self._domap(self._row_schema.others, False)
 
-    def _domap(self, columns: list[str], mandatory: bool) -> list[str]:
+    def _domap(self, columns: Sequence[str], mandatory: bool) -> list[str]:
         ret = []
         for column in columns:
             result = self._find(column)
@@ -128,7 +128,7 @@ class _PendingOperation(ABC):
 # key when inserting, because database tables commonly have rules for
 # defaulting it.
 class InsertOperation(_PendingOperation):
-    def __init__(self, cursor, table):
+    def __init__(self, cursor: CursorBase, table: str) -> None:
         super().__init__(cursor, table, False)
 
     def from_source(self, obj: Any) -> Optional[Any]:

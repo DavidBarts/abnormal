@@ -2,9 +2,10 @@
 
 # I m p o r t s
 
-from collections.abc import Sequence as _Sequence
+from collections.abc import Iterator as _Iterator, Sequence as _Sequence
 from typing import Any as _Any, Callable as _Callable, Optional as _Optional, Unpack as _Unpack
 
+from .base import ConnectionBase as _ConnectionBase, CursorBase as _CursorBase, Target as _Target
 from .driver import driver_for as _driver_for, Driver
 from .exceptions import Error, UnexpectedResultError, SqlError, IncompleteDataError
 from .misc import Namespace
@@ -24,12 +25,10 @@ apilevel = "2.0"
 threadsafety = 2
 paramstyle = "named"
 
-type _Target = _Callable[[_Unpack[_Any]], _Any]
-
 # C l a s s e s
 
-class Connection:
-    def __init__(self, raw: _Any, paramstyle: str, driver: Driver):
+class Connection(_ConnectionBase):
+    def __init__(self, raw: _Any, paramstyle: str, driver: Driver) -> None:
         for name in ['close', 'commit', 'rollback', 'cursor']:
             if not callable(getattr(raw, name, None)):
                 raise TypeError("Passed object is not a connection.")
@@ -37,25 +36,24 @@ class Connection:
         self._paramstyle = paramstyle
         self._driver = driver
 
-    def close(self):
+    def close(self) -> None:
         self.raw.close()
 
-    def commit(self):
+    def commit(self) -> None:
         self.raw.commit()
 
-    def rollback(self):
+    def rollback(self) -> None:
         self.raw.rollback()
 
-    def cursor(self):
+    def cursor(self) -> _CursorBase:
         return Cursor(self.raw.cursor(), self)
 
-    def execute(self, query: str, params: _Any = {}):
+    def execute(self, query: str, params: _Any = {}) -> _CursorBase:
         return self.cursor().execute(query, params)
 
-    def executemany(self, query: str, seq: _Sequence):
+    def executemany(self, query: str, seq: _Sequence) -> None:
         cursor = self.cursor()
         cursor.executemany(query, seq)
-        return cursor
 
     def insert_into(self, table: str) -> InsertOperation:
         return self.cursor().insert_into(table)
@@ -63,39 +61,39 @@ class Connection:
     def update(self, table: str) -> UpdateOperation:
         return self.cursor().update(table)
 
-class Cursor:
-    def __init__(self, raw, connection):
+class Cursor(_CursorBase):
+    def __init__(self, raw, connection) -> None:
         self.raw = raw
         self.connection = connection
-        self._colnames = None
+        self._colnames: _Optional[_Sequence[str]] = None
         self._converter = _QueryConverter()
 
     @property
-    def arraysize(self):
+    def arraysize(self) -> int:
         return self.raw.arraysize
 
     @property
-    def description(self):
+    def description(self) -> _Sequence[_Sequence[_Any]]:
         return self.raw.description
 
     @property
-    def rowcount(self):
+    def rowcount(self) -> int:
         return self.raw.rowcount
 
-    def callproc(self, procname: str, params: _Any = None):
+    def callproc(self, procname: str, params: _Optional[_Sequence[_Any]] = None) -> _Sequence[_Any]:
         if params is None:
             return self.raw.callproc(procname)
         else:
             return self.raw.callproc(procname, params)
 
-    def close(self):
+    def close(self) -> None:
         self.raw.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self.raw, '__del__'):
             self.raw.__del__()
 
-    def execute(self, operation: str, params={}):
+    def execute(self, operation: str, params={}) -> _CursorBase:
         self.raw.execute(*self._converter.convert(operation, params, self.connection._paramstyle))
         descr = self.raw.description
         if descr is None:
@@ -104,7 +102,7 @@ class Cursor:
             self._colnames = [ x[0].lower() for x in descr ]
         return self
 
-    def executemany(self, operation: str, seq: _Sequence[_Any]):
+    def executemany(self, operation: str, seq: _Sequence[_Any]) -> None:
         # TODO: see if we can make this sequence evaluation lazy (should we?)
         rseq = [ self._converter.convert(operation, params, self.connection._paramstyle) for params in seq ]
         if rseq:
@@ -122,7 +120,7 @@ class Cursor:
     def fetchall(self) -> _Sequence[_Sequence[_Any]]:
         return self.raw.fetchall()
 
-    def nextset(self):
+    def nextset(self) -> _Optional[bool]:
         return self.raw.nextset()
 
     def setinputsizes(self, sizes: _Sequence[int | type]) -> None:
@@ -134,7 +132,7 @@ class Cursor:
         else:
             self.raw.setoutputsize(size, column)
 
-    def into(self, target: _Target) -> _Any:
+    def into(self, target: _Target) -> _Iterator[_Any]:
         while True:
             value = self._into(target)
             if value is None:
@@ -160,6 +158,7 @@ class Cursor:
             return None
         kwargs = {}
         col = 0
+        assert self._colnames is not None
         for colname in self._colnames:
             kwargs[colname] = row[col]
             col += 1
@@ -173,7 +172,9 @@ class Cursor:
 
 # F u n c t i o n s
 
-def connect(mod, *args, **kwargs):
+# TODO: make more specific type declarations of these
+
+def connect(mod, *args, **kwargs) -> _ConnectionBase:
     """Given a PEP 249 compliant database module and connection parameters,
        return am abnormal Connection object."""
     return Connection(mod.connect(*args, **kwargs), mod.paramstyle, _driver_for(mod))

@@ -16,7 +16,7 @@ class RowSchema:
 
 class Driver(ABC):
     @abstractmethod
-    def row_schema(self, connection, table_name: str):
+    def row_schema(self, connection, table_name: str) -> RowSchema:
         ...
 
     def split_table_name(self, unsplit: str) -> tuple[Optional[str], str]:

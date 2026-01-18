@@ -6,6 +6,8 @@ from collections.abc import Sequence, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from abnormal.base import ConnectionBase, CursorBase
+
 class Warning(Exception):
     pass
 
@@ -36,7 +38,7 @@ class ProgrammingError(DatabaseError):
 class NotSupportedError(DatabaseError):
     pass
 
-class Connection:
+class Connection(ConnectionBase):
     def close(self) -> None:
         _log_use("connection close")
 
@@ -46,18 +48,18 @@ class Connection:
     def rollback(self) -> None:
         _log_use("connection rollback")
 
-    def cursor(self) -> Connection:
+    def cursor(self) -> CursorBase:
         _log_use("connection cursor")
         return Cursor()
 
-class Cursor:
+class Cursor(CursorBase):
     def __init__(self):
         _log_use("cursor __init__")
         self.rowcount = -1
         self.arraysize = 1
 
     @property
-    def description(self):
+    def description(self) -> -> Sequence[Sequence[str, type, Optional[int], Optional[int], Optional[int], Optional[bool]]]:
         return RESULTS.description.pop()
 
     def callproc(self, procname: str, parameters: Sequence) -> Sequence:
