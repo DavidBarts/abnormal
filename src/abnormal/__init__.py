@@ -2,8 +2,9 @@
 
 # I m p o r t s
 
-from collections.abc import Iterator as _Iterator, Sequence as _Sequence
+from collections.abc import Iterator as _Iterator, Mapping as _Mapping, Sequence as _Sequence
 from typing import Any as _Any, Callable as _Callable, Optional as _Optional, Unpack as _Unpack
+from types import ModuleType as _ModuleType
 
 from .base import ConnectionBase as _ConnectionBase, CursorBase as _CursorBase, Target as _Target
 from .driver import driver_for as _driver_for, Driver
@@ -172,14 +173,12 @@ class Cursor(_CursorBase):
 
 # F u n c t i o n s
 
-# TODO: make more specific type declarations of these
-
-def connect(mod, *args, **kwargs) -> _ConnectionBase:
+def connect(mod: _ModuleType, *args, **kwargs) -> _ConnectionBase:
     """Given a PEP 249 compliant database module and connection parameters,
        return am abnormal Connection object."""
     return Connection(mod.connect(*args, **kwargs), mod.paramstyle, _driver_for(mod))
 
-def mapping(**kwargs) -> _Any:
+def mapping(**kwargs) -> _Mapping[str, _Any]:
     "For returning a mapping with .into()"
     return kwargs
 
@@ -191,11 +190,11 @@ def scalar(**kwargs) -> _Any:
     else:
         raise UnexpectedResultError(f"unexpected column count of {ncols}")
 
-def sequence(**kwargs) -> _Any:
+def sequence(**kwargs) -> _Sequence[_Any]:
     "For returning a row as a sequence."
     # This should never be called directly; it is merely detected.
     raise NotImplementedError("sequence should never be called directly")
 
-def namespace(**kwargs) -> _Any:
+def namespace(**kwargs) -> Namespace:
     "For returning a namespace."
     return Namespace(kwargs)
