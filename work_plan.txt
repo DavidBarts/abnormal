@@ -21,19 +21,20 @@ very serious doubts about this now.
    hackery with virtual module creation that may not be possible, and
    even if it is would be tricky, convoluted, and arguably not very
    Pythonic.
-
+   
 2. It leads to awkward, cluttered code, because I must wrap all
    exceptions raised by the wrapped connection module into my own.
-
+   
 3. It leads to end user confusion. Keeping my exceptions distinct (this
    means possibly undoing what I have done wrt exception naming, though
    I am unsure on this) means that users will know whose code is at
    fault when an exception is thrown. This is important, as there WILL
    be bugs that come up in both my own code and the underlying drivers.
-
+   
 One of the principles of this whole project was KISS. I really think
 that may be best honored by being PEP 249-ish, and not strict PEP 249.
-Do not put that stuff back in.
+Rip out those extra methods and perhaps put the exception hierarchy back
+as it was (will let the user easily distinguish w/ unqualified names).
 
 If the user needs a genuine PEP 249 interface to do something, the user
 has access to one already, via connection.raw.
@@ -41,8 +42,7 @@ has access to one already, via connection.raw.
 De-Stuttering
 -------------
 
-It is a work in progress. See the drivers directory and pending.py in
-the experimental branch.
+It is a work in progress. See the drivers directory and pending.py.
 
 Thread Safety
 -------------
@@ -63,17 +63,13 @@ Finally, being stateful was the whole original intent and purpose of
 having cursor objects in the first place. Putting the state here meshes
 nicely with the whole "let SQL be SQL" philosophy of Abnormal.
 
-All mutable state should be in the cursor or lower (perhaps only in the
-cursor). The cursor should have a ._state variable that references a
-CursorState dataclass.
-
 A Reference to the Wrapped Module in the Connection?
 ----------------------------------------------------
 
 This may be a good idea. Then no need to track, say, driver and
 paramstyle separately. Just conn.module.paramstyle and lookup driver
 based on cursor.connection.module (a hash table lookup is cheap). Have
-this be a non-underscore variable, .connector not ._module, and document
+this be a non-underscore variable, .module not ._module, and document
 it, like .raw.
 
 A Reference to the Driver? Expose DbType?
@@ -94,14 +90,10 @@ def dbtype(self) -> DbType:
     if self._dbtype is None:
         self._dbtype = DBTYPES[self.module.__name__]
     return self._dbtype
-
+    
 Then in our de-stuttering logic (pending.py) we can do:
     driver = DRIVERS[cursor.connection.dbtype]
-    
-Also consider having (and exposing and documenting) a function to test
-if a driver exists for a given dbtype or the current dbtype. Maybe call
-it can_introspect?
-
+        
 Lazy Creation of De-Stuttering Drivers?
 ---------------------------------------
 
@@ -119,43 +111,13 @@ thread safety.
 Lexer vs. Tlexer
 ----------------
 
-Use tlexer for now, ignore the non-trivial lexer.py on the experimental
-branch. We don't need it. But see next section.
-
-Sqlglot
--------
-
-Experiment with it. Unless some deal-killers can be found, use it. It
-can do everything we always wanted to do, up and including defining a
-vendor-neutral SQL dialect and translating into vendor-specific form.
-
-DO NOT support general-purpose expression paramaterization. It is
-tempting, but will be extraordinary difficult to do so reliably, given
-the complex and incompletely-documented nature of sqlglot. The only clearly
-documented case is for individual simple identifiers, and that is so limited
-as to not be worth surfacing. Or if I do support it, only support it
-experimentally.
-
-Only resurrect tlexer if sqlglot proves unreliable (it probably won't,
-though: it is already used successfully in a number of places). If I do
-resurrect tlexer, I will take arbitrary SQL fragment replacement in lieu
-of dialect translation.
-
-It is not well documented, but sqlglot appears to use byte strings for
-the binary type and datetime (Date, Time, DateTime) objects for time and
-date values, and it is probably safe to assume that this won't change.
-So create PEP 249 style functions for creating those.
-
-Sqlglot supports A LOT of different database types. Support all for
-which it conceivably makes sense (i.e. all for which a PSP 249 driver
-exists, and maybe require official support, too). Will need to map
-DbType to sqlglot names as well as our drivers. Probably just scrap
-support for DB2 since it is not in stock sqlglot (that is a sign of it
-not being very popular). We should not implement a bunch of new drivers
-for de-stuttering methods. Just raise NotImplementedError if those are
-used for an unsupported database. Document the limitation. Do consider
-supporting the ones that support the standard INFORMATION_SCHEMA, since
-we can do that for little or no cost.
+Right now, I have both a "trivial" and a "production" lexer. Code seems
+to be using the "trivial" one. What's up? I don't seem to have any notes
+on things. The only tests are for tlexer.py. Looking at the code a bit,
+I think that tlexer may be good enough. Lexer seems to be part of an
+abandoned efforr to fully parse all of SQL, as part of defining my own
+SQL dialect, an approach I later rejected. Confirm this, and archive
+lexer.py, if appropriate.
 
 Transactions
 ------------

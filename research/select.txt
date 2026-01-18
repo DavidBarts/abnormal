@@ -1,0 +1,1049 @@
+Syntax of the SELECT statement only, to see if we can simplify things by
+supporting CRUD only.
+
+[26706]
+
+         <select statement: single row> ::=
+              SELECT [ <set quantifier> ] <select list>
+                INTO <select target list>
+                  <table expression>
+
+         <select target list> ::=
+              <target specification> [ { <comma> <target specification> }... ]
+
+We modify the above statement to be:
+
+         <select statement> ::=
+              SELECT [ <set quantifier> ] <select list>
+                  <table expression>
+
+[9510]
+
+         <set quantifier> ::= DISTINCT | ALL
+
+[13990]
+
+         <select list> ::=
+                <asterisk>
+              | <select sublist> [ { <comma> <select sublist> }... ]
+
+         <select sublist> ::=
+                <derived column>
+              | <qualifier> <period> <asterisk>
+
+         <derived column> ::= <value expression> [ <as clause> ]
+
+         <as clause> ::= [ AS ] <column name>
+
+[6592]
+
+         <asterisk> ::= *
+
+         <comma> ::= ,
+
+
+[9299]
+
+         <qualifier> ::=
+                <table name>
+              | <correlation name>
+
+[6596]
+
+         <period> ::= .
+
+[11592]
+
+         <value expression> ::=
+                <numeric value expression>
+              | <string value expression>
+              | <datetime value expression>
+              | <interval value expression>
+
+[7812]
+
+         <column name> ::= <identifier>
+
+[7789]
+
+         <table name> ::=
+                <qualified name>
+              | <qualified local table name>
+
+         <qualified local table name> ::=
+              MODULE <period> <local table name>
+
+         <local table name> ::= <qualified identifier>
+
+[7827]
+
+         <correlation name> ::= <identifier>
+
+[11724]
+
+         <numeric value expression> ::=
+                <term>
+              | <numeric value expression> <plus sign> <term>
+              | <numeric value expression> <minus sign> <term>
+
+         <term> ::=
+                <factor>
+              | <term> <asterisk> <factor>
+              | <term> <solidus> <factor>
+
+         <factor> ::=
+              [ <sign> ] <numeric primary>
+
+         <numeric primary> ::=
+                <value expression primary>
+              | <numeric value function>
+
+[11922]
+
+         <string value expression> ::=
+                <character value expression>
+              | <bit value expression>
+
+[12259]
+
+         <datetime value expression> ::=
+                <datetime term>
+              | <interval value expression> <plus sign> <datetime term>
+              | <datetime value expression> <plus sign> <interval term>
+              | <datetime value expression> <minus sign> <interval term>
+
+         <datetime term> ::=
+                <datetime factor>
+
+         <datetime factor> ::=
+                <datetime primary> [ <time zone> ]
+
+         <datetime primary> ::=
+                <value expression primary>
+              | <datetime value function>
+
+         <time zone> ::=
+              AT <time zone specifier>
+
+         <time zone specifier> ::=
+                LOCAL
+              | TIME ZONE <interval value expression>
+
+[12458]
+
+         <interval value expression> ::=
+                <interval term>
+              | <interval value expression 1> <plus sign> <interval term 1>
+
+              | <interval value expression 1> <minus sign> <interval term 1>
+
+              | <left paren> <datetime value expression> <minus sign>
+                    <datetime term> <right paren> <interval qualifier>
+
+         <interval term> ::=
+                <interval factor>
+              | <interval term 2> <asterisk> <factor>
+              | <interval term 2> <solidus> <factor>
+              | <term> <asterisk> <interval factor>
+
+         <interval factor> ::=
+              [ <sign> ] <interval primary>
+
+         <interval primary> ::=
+                <value expression primary> [ <interval qualifier> ]
+
+         <interval value expression 1> ::= <interval value expression>
+
+         <interval term 1> ::= <interval term>
+
+         <interval term 2> ::= <interval term>
+
+[7769]
+
+         <identifier> ::=
+              [ <introducer><character set specification> ] <actual identifier>
+
+         <actual identifier> ::=
+                <regular identifier>
+              | <delimited identifier>
+
+[`7]
+
+         <qualified name> ::=
+              [ <schema name> <period> ] <qualified identifier>
+
+[6596]
+
+         <period> ::= .
+
+[7810]
+
+         <qualified identifier> ::= <identifier>
+
+[6590]
+
+         <plus sign> ::= +
+
+[6594]
+
+         <minus sign> ::= -
+
+[6598]
+
+         <solidus> ::= /
+
+[11598]
+
+         <value expression primary> ::=
+                <unsigned value specification>
+              | <column reference>
+              | <set function specification>
+              | <scalar subquery>
+              | <case expression>
+              | <left paren> <value expression> <right paren>
+              | <cast specification>
+
+[9763]
+
+         <numeric value function> ::=
+                <position expression>
+              | <extract expression>
+              | <length expression>
+
+[11926]
+
+         <character value expression> ::=
+                <concatenation>
+              | <character factor>
+
+         <concatenation> ::=
+              <character value expression> <concatenation operator>
+              <character factor>
+
+         <character factor> ::=
+              <character primary> [ <collate clause> ]
+
+         <character primary> ::=
+                <value expression primary>
+              | <string value function>
+
+[11941]
+
+         <bit value expression> ::=
+                <bit concatenation>
+              | <bit factor>
+
+         <bit concatenation> ::=
+              <bit value expression> <concatenation operator> <bit factor>
+
+         <bit factor> ::= <bit primary>
+
+         <bit primary> ::=
+                <value expression primary>
+              | <string value function>
+
+[10505]
+
+         <datetime value function> ::=
+                <current date value function>
+              | <current time value function>
+              | <current timestamp value function>
+
+         <current date value function> ::= CURRENT_DATE
+
+         <current time value function> ::=
+                CURRENT_TIME [ <left paren> <time precision> <right paren> ]
+
+         <current timestamp value function> ::=
+                CURRENT_TIMESTAMP [ <left paren> <timestamp precision> <right paren> ]
+
+[6584]
+
+         <left paren> ::= (
+
+         <right paren> ::= )
+
+[17202]
+
+         <interval qualifier> ::=
+                <start field> TO <end field>
+              | <single datetime field>
+
+         <start field> ::=
+              <non-second datetime field>
+                  [ <left paren> <interval leading field precision> <right paren> ]
+
+
+         <end field> ::=
+                <non-second datetime field>
+              | SECOND [ <left paren> <interval fractional seconds precision> <right paren> ]
+
+
+         <single datetime field> ::=
+                <non-second datetime field>
+                    [ <left paren> <interval leading field precision> <right paren> ]
+
+              | SECOND [ <left paren> <interval leading field precision>
+                    [ <comma> <interval fractional seconds precision> ] <right paren> ]
+
+
+         <datetime field> ::=
+                <non-second datetime field>
+              | SECOND
+
+         <non-second datetime field> ::= YEAR | MONTH | DAY | HOUR | MINUTE
+
+         <interval fractional seconds precision> ::= <unsigned integer>
+
+         <interval leading field precision> ::= <unsigned integer>
+
+[7238]
+
+         <sign> ::= <plus sign> | <minus sign>
+
+[7186]
+
+         <introducer> ::= <underscore>
+
+[17794]
+
+         <character set specification> ::=
+                <standard character repertoire name>
+              | <implementation-defined character repertoire name>
+              | <user-defined character repertoire name>
+              | <standard universal character form-of-use name>
+              | <implementation-defined universal character form-of-
+              use name>
+
+         <standard character repertoire name> ::= <character set name>
+
+         <implementation-defined character repertoire name> ::= <character set name>
+
+         <user-defined character repertoire name> ::= <character set name>
+
+         <standard universal character form-of-use name> ::=
+              <character set name>
+
+         <implementation-defined universal character form-of-use name> ::=
+              <character set name>
+
+[6713]
+
+         <regular identifier> ::= <identifier body>
+
+         <identifier body> ::=
+              <identifier start> [ { <underscore> | <identifier part> }... ]
+
+         <identifier start> ::= !! See the Syntax Rules
+
+         <identifier part> ::=
+                <identifier start>
+              | <digit>
+
+         <delimited identifier> ::=
+              <double quote> <delimited identifier body> <double quote>
+
+         <delimited identifier body> ::= <delimited identifier part>...
+
+         <delimited identifier part> ::=
+                <nondoublequote character>
+              | <doublequote symbol>
+
+         <nondoublequote character> ::= !! See the Syntax Rules
+
+         <doublequote symbol> ::= <double quote><double quote>
+
+[7800]
+
+         <schema name> ::=
+              [ <catalog name> <period> ] <unqualified schema name>
+
+         <unqualified schema name> ::= <identifier>
+
+         <catalog name> ::= <identifier>
+
+[8841]
+
+         <unsigned value specification> ::=
+                <unsigned literal>
+              | <general value specification>
+
+         <general value specification> ::=
+                <parameter specification>
+              | <dynamic parameter specification>
+              | <variable specification>
+              | USER
+              | CURRENT_USER
+              | SESSION_USER
+              | SYSTEM_USER
+              | VALUE
+
+[9299]
+
+         <column reference> ::= [ <qualifier> <period> ] <column name>
+
+[9498]
+
+         <set function specification> ::=
+                COUNT <left paren> <asterisk> <right paren>
+              | <general set function>
+
+         <general set function> ::=
+                <set function type>
+                    <left paren> [ <set quantifier> ] <value expression> <right paren>
+
+
+         <set function type> ::=
+              AVG | MAX | MIN | SUM | COUNT
+
+         <set quantifier> ::= DISTINCT | ALL
+
+[14796]
+
+         <scalar subquery> ::= <subquery>
+
+         <row subquery> ::= <subquery>
+
+         <table subquery> ::= <subquery>
+
+         <subquery> ::= <left paren> <query expression> <right paren>
+
+[10637]
+
+         <case expression> ::=
+                <case abbreviation>
+              | <case specification>
+
+         <case abbreviation> ::=
+                NULLIF <left paren> <value expression> <comma>
+                      <value expression> <right paren>
+              | COALESCE <left paren> <value expression>
+                      { <comma> <value expression> }... <right paren>
+
+         <case specification> ::=
+                <simple case>
+              | <searched case>
+
+         <simple case> ::=
+              CASE <case operand>
+                <simple when clause>...
+                [ <else clause> ]
+              END
+
+         <searched case> ::=
+              CASE
+                <searched when clause>...
+                [ <else clause> ]
+              END
+
+         <simple when clause> ::= WHEN <when operand> THEN <result>
+
+         <searched when clause> ::= WHEN <search condition> THEN <result>
+
+         <else clause> ::= ELSE <result>
+
+         <case operand> ::= <value expression>
+
+         <when operand> ::= <value expression>
+
+         <result> ::= <result expression> | NULL
+
+         <result expression> ::= <value expression>
+
+[10835]
+
+         <cast specification> ::=
+              CAST <left paren> <cast operand> AS <cast target> <right paren>
+
+         <cast operand> ::=
+                <value expression>
+              | NULL
+
+         <cast target> ::=
+                <domain name>
+              | <data type>
+
+[9768]
+
+         <position expression> ::=
+              POSITION <left paren> <character value expression>
+                  IN <character value expression> <right paren>
+
+[9789]
+
+         <extract expression> ::=
+              EXTRACT <left paren> <extract field>
+                  FROM <extract source> <right paren>
+
+         <extract field> ::=
+                <datetime field>
+              | <time zone field>
+
+[9772]
+
+         <length expression> ::=
+                <char length expression>
+              | <octet length expression>
+              | <bit length expression>
+
+         <char length expression> ::=
+              { CHAR_LENGTH | CHARACTER_LENGTH }
+                  <left paren> <string value expression> <right paren>
+
+         <octet length expression> ::=
+              OCTET_LENGTH <left paren> <string value expression> <right paren>
+
+         <bit length expression> ::=
+              BIT_LENGTH <left paren> <string value expression> <right paren>
+
+[6773]
+
+         <concatenation operator> ::= ||
+
+[17994]
+
+         <collate clause> ::= COLLATE <collation name>
+
+[10036]
+
+         <string value function> ::=
+                <character value function>
+              | <bit value function>
+
+         <character value function> ::=
+                <character substring function>
+              | <fold>
+              | <form-of-use conversion>
+              | <character translation>
+              | <trim function>
+
+         <character substring function> ::=
+              SUBSTRING <left paren> <character value expression> FROM <start position>
+
+                          [ FOR <string length> ] <right paren>
+
+         <fold> ::= { UPPER | LOWER } <left paren> <character value expression> <right paren>
+
+
+         <form-of-use conversion> ::=
+              CONVERT <left paren> <character value expression>
+                  USING <form-of-use conversion name> <right paren>
+
+         <character translation> ::=
+              TRANSLATE <left paren> <character value expression>
+                  USING <translation name> <right paren>
+
+         <trim function> ::=
+              TRIM <left paren> <trim operands> <right paren>
+
+         <trim operands> ::=
+              [ [ <trim specification> ] [ <trim character> ] FROM ] <trim source>
+
+
+         <trim source> ::= <character value expression>
+
+         <trim specification> ::=
+                LEADING
+              | TRAILING
+              | BOTH
+
+         <trim character> ::= <character value expression>
+
+         <bit value function> ::=
+              <bit substring function>
+
+         <bit substring function> ::=
+              SUBSTRING <left paren> <bit value expression> FROM <start position>
+
+                  [ FOR <string length> ] <right paren>
+
+         <start position> ::= <numeric value expression>
+
+         <string length> ::= <numeric value expression>
+
+[8449]
+
+         <time precision> ::= <time fractional seconds precision>
+
+         <timestamp precision> ::= <time fractional seconds precision>
+
+         <time fractional seconds precision> ::= <unsigned integer>
+
+[6628]
+
+         <underscore> ::= _
+
+[6576]
+
+         <double quote> ::= "
+
+[7168]
+
+         <unsigned literal> ::=
+                <unsigned numeric literal>
+              | <general literal>
+
+[8868]
+
+         <parameter specification> ::=
+              <parameter name> [ <indicator parameter> ]
+
+         <indicator parameter> ::=
+              [ INDICATOR ] <parameter name>
+
+         <dynamic parameter specification> ::= <question mark>
+
+         <variable specification> ::=
+              <embedded variable name> [ <indicator variable> ]
+
+         <indicator variable> ::=
+              [ INDICATOR ] <embedded variable name>
+
+[14321]
+
+         <query expression> ::=
+                <non-join query expression>
+              | <joined table>
+
+         <non-join query expression> ::=
+                <non-join query term>
+              | <query expression> UNION  [ ALL ] [ <corresponding spec> ] <query term>
+
+              | <query expression> EXCEPT [ ALL ] [ <corresponding spec> ] <query term>
+
+         <query term> ::=
+                <non-join query term>
+              | <joined table>
+
+         <non-join query term> ::=
+                <non-join query primary>
+              | <query term> INTERSECT [ ALL ] [ <corresponding spec> ] <query primary>
+
+
+         <query primary> ::=
+                <non-join query primary>
+              | <joined table>
+
+         <non-join query primary> ::=
+                <simple table>
+              | <left paren> <non-join query expression> <right paren>
+
+         <simple table> ::=
+                <query specification>
+              | <table value constructor>
+              | <explicit table>
+
+         <explicit table> ::= TABLE <table name>
+
+         <corresponding spec> ::=
+              CORRESPONDING [ BY <left paren> <corresponding column list> <right paren> ]
+
+         <corresponding column list> ::= <column name list>
+
+[16528]
+
+         <search condition> ::=
+                <boolean term>
+              | <search condition> OR <boolean term>
+
+         <boolean term> ::=
+                <boolean factor>
+              | <boolean term> AND <boolean factor>
+
+         <boolean factor> ::=
+              [ NOT ] <boolean test>
+
+         <boolean test> ::=
+              <boolean primary> [ IS [ NOT ] <truth value> ]
+
+         <truth value> ::=
+                TRUE
+              | FALSE
+              | UNKNOWN
+
+         <boolean primary> ::=
+                <predicate>
+              | <left paren> <search condition> <right paren>
+
+[7798]
+
+         <domain name> ::= <qualified name>
+
+[8374]
+
+         <data type> ::=
+                <character string type> [ CHARACTER SET <character set specification> ]
+              | <national character string type>
+              | <bit string type>
+              | <numeric type>
+              | <datetime type>
+              | <interval type>
+
+         <character string type> ::=
+                CHARACTER [ <left paren> <length> <right paren> ]
+              | CHAR [ <left paren> <length> <right paren> ]
+              | CHARACTER VARYING <left paren> <length> <right paren>
+              | CHAR VARYING <left paren> <length> <right paren>
+              | VARCHAR <left paren> <length> <right paren>
+
+         <national character string type> ::=
+                NATIONAL CHARACTER [ <left paren> <length> <right paren> ]
+              | NATIONAL CHAR [ <left paren> <length> <right paren> ]
+              | NCHAR [ <left paren> <length> <right paren> ]
+              | NATIONAL CHARACTER VARYING <left paren> <length> <right paren>
+
+              | NATIONAL CHAR VARYING <left paren> <length> <right paren>
+              | NCHAR VARYING <left paren> <length> <right paren>
+
+         <bit string type> ::=
+                BIT [ <left paren> <length> <right paren> ]
+              | BIT VARYING <left paren> <length> <right paren>
+
+         <numeric type> ::=
+                <exact numeric type>
+              | <approximate numeric type>
+
+         <exact numeric type> ::=
+                NUMERIC [ <left paren> <precision> [ <comma> <scale> ] <right paren> ]
+              | DECIMAL [ <left paren> <precision> [ <comma> <scale> ] <right paren> ]
+              | DEC [ <left paren> <precision> [ <comma> <scale> ] <right paren> ]
+              | INTEGER
+              | INT
+              | SMALLINT
+
+         <approximate numeric type> ::=
+                FLOAT [ <left paren> <precision> <right paren> ]
+              | REAL
+              | DOUBLE PRECISION
+
+         <length> ::= <unsigned integer>
+
+         <precision> ::= <unsigned integer>
+
+         <scale> ::= <unsigned integer>
+
+         <datetime type> ::=
+                DATE
+              | TIME [ <left paren> <time precision> <right paren> ]
+              [ WITH TIME ZONE ]
+              | TIMESTAMP [ <left paren> <timestamp precision> <right paren> ]
+              [ WITH TIME ZONE ]
+
+         <time precision> ::= <time fractional seconds precision>
+
+         <timestamp precision> ::= <time fractional seconds precision>
+
+         <time fractional seconds precision> ::= <unsigned integer>
+
+         <interval type> ::= INTERVAL <interval qualifier>
+
+[9801]
+
+         <extract source> ::=
+                <datetime value expression>
+              | <interval value expression>
+
+[9797]
+
+         <time zone field> ::=
+                TIMEZONE_HOUR
+              | TIMEZONE_MINUTE
+
+[7862]
+
+         <collation name> ::= <qualified name>
+
+[7867]
+
+         <translation name> ::= <qualified name>
+
+         <form-of-use conversion name> ::= <qualified name>
+
+[7248]
+
+         <unsigned integer> ::= <digit>...
+
+[7230]
+
+         <unsigned numeric literal> ::=
+                <exact numeric literal>
+              | <approximate numeric literal>
+
+         <exact numeric literal> ::=
+                <unsigned integer> [ <period> [ <unsigned integer> ] ]
+              | <period> <unsigned integer>
+
+[7172]
+
+         <general literal> ::=
+                <character string literal>
+              | <national character string literal>
+              | <bit string literal>
+              | <hex string literal>
+              | <datetime literal>
+              | <interval literal>
+
+[7858]
+
+         <parameter name> ::= <colon> <identifier>
+
+[6610]
+
+         <question mark> ::= ?
+
+[33946]
+
+         <embedded variable name> ::=
+              <colon><host identifier>
+
+         <host identifier> ::=
+                <Ada host identifier>
+              | <C host identifier>
+              | <COBOL host identifier>
+              | <Fortran host identifier>
+              | <MUMPS host identifier>
+              | <Pascal host identifier>
+              | <PL/I host identifier>
+
+[13254]
+
+         <joined table> ::=
+                <cross join>
+              | <qualified join>
+              | <left paren> <joined table> <right paren>
+
+         <cross join> ::=
+              <table reference> CROSS JOIN <table reference>
+
+         <qualified join> ::=
+              <table reference> [ NATURAL ] [ <join type> ] JOIN
+                <table reference> [ <join specification> ]
+
+         <join specification> ::=
+                <join condition>
+              | <named columns join>
+
+         <join condition> ::= ON <search condition>
+
+         <named columns join> ::=
+              USING <left paren> <join column list> <right paren>
+
+         <join type> ::=
+                INNER
+              | <outer join type> [ OUTER ]
+              | UNION
+
+         <outer join type> ::=
+                LEFT
+              | RIGHT
+              | FULL
+
+         <join column list> ::= <column name list>
+
+[13987]
+
+         <query specification> ::=
+              SELECT [ <set quantifier> ] <select list> <table expression>
+
+[12990]
+
+         <table value constructor> ::=
+              VALUES <table value constructor list>
+
+         <table value constructor list> ::=
+              <row value constructor> [ { <comma> <row value constructor> }... ]
+
+[9112]
+
+         <column name list> ::=
+              <column name> [ { <comma> <column name> }... ]
+
+[14396]
+
+         <predicate> ::=
+                <comparison predicate>
+              | <between predicate>
+              | <in predicate>
+              | <like predicate>
+              | <null predicate>
+              | <quantified comparison predicate>
+              | <exists predicate>
+              | <unique predicate>
+              | <match predicate>
+              | <overlaps predicate>
+
+[6535]
+
+         <digit> ::=
+              0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+
+[7240]
+
+         <approximate numeric literal> ::= <mantissa> E <exponent>
+
+         <mantissa> ::= <exact numeric literal>
+
+         <exponent> ::= <signed integer>
+
+[7180]
+
+         <character string literal> ::=
+              [ <introducer><character set specification> ]
+              <quote> [ <character representation>... ] <quote>
+                [ { <separator>... <quote> [ <character representation>... ] <quote> }... ]
+
+[7196]
+
+         <national character string literal> ::=
+              N <quote> [ <character representation>... ] <quote>
+                [ { <separator>... <quote> [ <character representation>... ] <quote> }... ]
+
+         <bit string literal> ::=
+              B <quote> [ <bit>... ] <quote>
+                [ { <separator>... <quote> [ <bit>... ] <quote> }... ]
+
+         <hex string literal> ::=
+              X <quote> [ <hexit>... ] <quote>
+                [ { <separator>... <quote> [ <hexit>... ] <quote> }... ]
+
+[7250]
+
+         <datetime literal> ::=
+                <date literal>
+              | <time literal>
+              | <timestamp literal>
+
+[7298]
+
+         <interval literal> ::=
+              INTERVAL [ <sign> ] <interval string> <interval qualifier>
+
+         <interval string> ::=
+              <quote> { <year-month literal> | <day-time literal> } <quote>
+
+[9101]
+
+         <table reference> ::=
+                <table name> [ [ AS ] <correlation name>
+                    [ <left paren> <derived column list> <right paren> ] ]
+              | <derived table> [ AS ] <correlation name>
+                    [ <left paren> <derived column list> <right paren> ]
+              | <joined table>
+
+         <derived table> ::= <table subquery>
+
+         <derived column list> ::= <column name list>
+
+         <column name list> ::=
+              <column name> [ { <comma> <column name> }... ]
+
+[13055]
+
+         <table expression> ::=
+              <from clause>
+              [ <where clause> ]
+              [ <group by clause> ]
+              [ <having clause> ]
+
+[12799]
+
+         <row value constructor> ::=
+                <row value constructor element>
+              | <left paren> <row value constructor list> <right paren>
+              | <row subquery>
+
+         <row value constructor list> ::=
+              <row value constructor element>
+                  [ { <comma> <row value constructor element> }... ]
+
+         <row value constructor element> ::=
+                <value expression>
+              | <null specification>
+              | <default specification>
+
+         <null specification> ::=
+              NULL
+
+         <default specification> ::=
+              DEFAULT
+
+[15060]
+
+         <comparison predicate> ::=
+              <row value constructor> <comp op> <row value constructor>
+
+         <comp op> ::=
+                <equals operator>
+              | <not equals operator>
+              | <less than operator>
+              | <greater than operator>
+              | <less than or equals operator>
+              | <greater than or equals operator>
+
+[15329]
+
+         <between predicate> ::=
+              <row value constructor> [ NOT ] BETWEEN
+                <row value constructor> AND <row value constructor>
+
+[15395]
+
+         <in predicate> ::=
+              <row value constructor>
+                [ NOT ] IN <in predicate value>
+
+         <in predicate value> ::=
+                <table subquery>
+              | <left paren> <in value list> <right paren>
+
+         <in value list> ::=
+              <value expression> { <comma> <value expression> }...
+
+[15530]
+
+         <like predicate> ::=
+              <match value> [ NOT ] LIKE <pattern>
+                [ ESCAPE <escape character> ]
+
+         <match value> ::= <character value expression>
+
+         <pattern> ::= <character value expression>
+
+         <escape character> ::= <character value expression>
+
+[15794]
+
+         <null predicate> ::= <row value constructor> IS [ NOT ] NULL
+
+[15927]
+
+         <quantified comparison predicate> ::=
+              <row value constructor> <comp op> <quantifier> <table subquery>
+
+         <quantifier> ::= <all> | <some>
+
+         <all> ::= ALL
+
+         <some> ::= SOME | ANY
+
+[16059]
+
+         <exists predicate> ::= EXISTS <table subquery>
+
+[16125]
+
+         <unique predicate> ::= UNIQUE <table subquery>
+
+[16191]
+
+         <match predicate> ::=
+              <row value constructor> MATCH [ UNIQUE ] [ PARTIAL | FULL ] <table subquery>
+
+[16394]
+
+         <overlaps predicate> ::=
+              <row value constructor 1> OVERLAPS <row value constructor 2>
+
+         <row value constructor 1> ::= <row value constructor>
+
+         <row value constructor 2> ::= <row value constructor>

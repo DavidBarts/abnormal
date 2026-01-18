@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Abnormal'
-copyright = '2024, David W. Barts'
+copyright = '2024-2026, David W. Barts'
 author = 'David W. Barts'
 release = '0.1'
 

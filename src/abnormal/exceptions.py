@@ -1,8 +1,10 @@
 # Exceptions. We always throw Error or one of its subclasses, and always
 # try to wrap other exceptions in one of our own.
 
+from typing import Optional
+
 class Error(Exception):
-    def __init__(self, reason=None):
+    def __init__(self, reason: Optional[str] = None) -> None:
         self.reason = reason
         super().__init__()
 
@@ -24,12 +26,31 @@ class UnexpectedResultError(Error):
     When we expect a single result and either get multiple results,
     or nothing at all.
     """
-    # XXX - note that due to the limitations of some PEP 249 database
-    # interfaces, unexpected multiple results are not always reliably
-    # detected.
-    def __init__(self, cause, reason=None):
-        self.cause = cause
-        super().__init__(reason)
+    pass
 
-    def __repr__(self):
-        return super().__repr__() + f" caused by {self.cause!r}"
+class SqlError(Error):
+    """
+    When we can't make sense of the SQL that has been fed to us.
+    """
+    pass
+
+class IncompleteDataError(Error):
+    """
+    When an .insert_into or .update is fed inufficient data, i.e. data
+    with a missing or incomplete primary key.
+    """
+
+class InterfaceError(Error):
+    """
+    Something went wrong attempting to interface with the database.
+    Currently used to report a failure to determine primary key columns
+    in a table.
+    """
+
+class InvalidStateError(Error):
+    """
+    When the user attempts to do something for which the state of an
+    object is not valid. Currently used to report an attempt to use the
+    mutually-exclusive .including and .excluding modifiers to a
+    PendingOperation.
+    """

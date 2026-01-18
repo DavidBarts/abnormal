@@ -1,0 +1,90 @@
+The big problem that stops abnORMal from being a distinct improvement
+on ORMs is that, while it gets rid of ORM overhead and repetition for
+the read and delete cases, it is worse on create and update.
+
+curs.execute("insert into suppliers (sno, name, status, city) values (:sno, :name, :status: city)",
+    Suppliers(sno = 'S1', name = 'Smith', status = 20, city = 'London'))
+    
+curs.execute("update suppliers set name = :name, status = :status, city = :city where sno = :sno",
+    Suppliers(sno = 'S2', name = 'Jones', status = 10, city = 'Paris'))
+    
+This is, in a word, suboptimal. It would be far better if we could do stuff
+like:
+
+curs.insert_into("suppliers").from(Suppliers(sno = 'S1', name = 'Smith', status = 20, city = 'London'))
+
+Consider having this one return the new primary key.
+
+curs.update("suppliers").from(Suppliers(sno = 'S2', name = 'Jones', status = 10, city = 'Paris'))
+
+Can we? It depends on the ability of PEP0249 to have standard ways of
+returning enough database schema data to us. Unfortunately, that is
+totally unstandardized.  In MySQL the command is "describe" and in
+PostgreSQL it is "\d", to pick just two examples. ORMs run into this
+issue, too. It is a big part of why they suck so much; they force you to
+key it all in by hand.
+
+I am undecided on this.
+
+First, it is only one query we need to do, the one that gets the table
+schema. This is not insurmountably difficult. We could collect the rules
+for all the common databases and dispatch based on the PEP0249 module
+somehow (probably its name). We could even cache it for efficiency; we
+would need to store the non-PK column names as a sequence and the name
+of the primary key as a scalar. (we might also need to likewise collect
+table name quoting rules)
+
+Second, we can do nothing and let the user paint abnORMal out of the
+picture.  Most databases have QMARK query style and that can be a little
+less stutter-y in these cases.
+
+s = Suppliers(sno = 'S1', name = 'Smith', status = 20, city = 'London')
+curs.raw.execute("insert into suppliers (sno, name, status, city) values (?, ?, ?, ?)",
+    s.sno, s.name, s.status, s.city)
+    
+Third, we can require standard ORM-style predefining if the user wants
+to do this sort of stuff. Still better than requiring it in all cases,
+whether we need the info or not.
+
+Fourth, perhaps this is an argument against something like abnORMal.
+
+The next day: Fifth, take a look at INFORMATION_SCHEMA. It is an SQL
+standard database (perhaps a virtual/readonly one) that provides
+schema information, and seems tailormade for precisely what I want
+to do here! The answer seems obviously to be DO IT, and do it this way.
+
+Something like:
+select column_name, column_key
+    from information_schema.columns
+    where table_name = 'obs_area' and table_schema = 'wx_aloft'
+    order by ORDINAL_POSITION asc;
+
+Getting the database is, however, a different matter. And this is
+important because tables are only unique within a database, not within
+an entire DBMS installation.  In fact, the official SQL-ese for the
+latter is a "cluster," to emphasize that multiple databases are a thing.
+In MySQL one uses DATABASE() and the TABLE_SCHEMA column. In PostgreSQL
+and SQL Server, one uses CURRENT_CATALOG and the TABLE_CATALOG one.
+There should be an optional database= parameter to insert_into and
+update that can be used to specify a database other than the current
+one.
+
+Before coding more, however, I should do some research as to whether
+the proposal is worth implementing. Look for, say, source code (or even
+tutorial examples) for Django web sites. Or any other DB heavy code,
+even in languages other than Python. Then rewrite using abnORMal and
+see how much better/worse everything is.
+
+insert_into and update should accept an optional columns parameter.
+This would be a sequence of strings, denoting the names of the columns
+to include in the operation. Even the primary key should be optional.
+Punt that one down to the DBMS. Some of them allow auto_increment
+PK's, and this is typically what is done. Also accept an exclude
+parameter (only one of columns or exclude allowed), which is the
+things NOT to insert. Or maybe use .including and .excluding modifier
+methods (if so, have these take varargs of strings)? Or .include and
+.exclude?
+
+Probably the best way is to have the two return InsertOperation and
+UpdateOperation objects respectively. .including and .excluding do their
+stuff and return self, for chaining. .from causes the work to be done.

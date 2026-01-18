@@ -1,9 +1,12 @@
 # Helpers for sending data to the database.
+# TODO: needs to be class-based, so can have one instance per connection,
+# so each connection gets its own private query cache. Or kill the cache.
 
 # I m p o r t s
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from .tlexer import SqlToken, tlexer
 
@@ -17,7 +20,9 @@ _INITIALS = {
     'pyformat': dict
 }
 
-_qcache = {}
+# Also see below at end of file.
+
+type Params = MutableSequence[Any] | MutableMapping[str, Any]
 
 # C l a s s e s
 
@@ -27,28 +32,34 @@ class CacheKey:
     paramstyle: str
 
 class CacheValue:
-    def __init__(self, rawsql, names):
+    def __init__(self, rawsql: Sequence[str], names: Sequence[str]):
         self.sql = ''.join(rawsql)
         self.names = names
 
+class QueryConverter:
+    def __init__(self) -> None:
+        self._qcache: dict[CacheKey, CacheValue] = {}
+
+    def convert(self, query: str, params: Any, paramstyle: str) -> tuple[str, Params]:
+        "Convert query and params from vendor-neutral to database-specific form."
+        key = CacheKey(query, paramstyle)
+        if key in self._qcache:
+            cached = self._qcache[key]
+        else:
+            cached = self._qcache[key] = _CONVERTERS[paramstyle](query, params)
+        return self._convert(cached, params, _INITIALS[paramstyle], _APPENDERS[paramstyle])
+
+    def _convert(self, cached: CacheValue, params: Any, initial_params: Callable[[], Params], append_params: Appender) -> tuple[str, Params]:
+        returned_params = initial_params()
+        for name in cached.names:
+            # Not a problem due to program logic, but Mypy is too stupid
+            # to understand that.
+            append_params(returned_params, params, name)  # type: ignore
+        return (cached.sql, returned_params)
+
 # F u n c t i o n s
 
-def convert(query, params, paramstyle):
-    "Convert query and params from vendor-neutral to database-specific form."
-    key = CacheKey(query, paramstyle)
-    if key in _qcache:
-        cached = _qcache[key]
-    else:
-        cached = _qcache[key] = _CONVERTERS[paramstyle](query, params)
-    return _convert(cached, params, _INITIALS[paramstyle], _APPENDERS[paramstyle])
-
-def _convert(cached, params, initial_params, append_params):
-    returned_params = initial_params()
-    for name in cached.names:
-        append_params(returned_params, params, name)
-    return (cached.sql, returned_params)
-
-def _positional(query, params, repl):
+def _positional(query: str, params: Any, repl: str) -> CacheValue:
     rquery = []
     rnames = []
     for token in tlexer(query):
@@ -62,10 +73,10 @@ def _positional(query, params, repl):
 # XXX - PEP0249 never explicitly mentions it, but the parameters in this
 # style apparently use 1-based indexing. See:
 # https://github.com/python/cpython/issues/99953
-def _numeric(query, params):
-    rquery = []
-    rnames = []
-    index = {}
+def _numeric(query: str, params: Any) -> CacheValue:
+    rquery: list[str] = []
+    rnames: list[str] = []
+    index: MutableMapping[str, str] = {}
     for token in tlexer(query):
         if token.is_param:
             name = _getname(token.value)
@@ -77,7 +88,7 @@ def _numeric(query, params):
             rquery.append(token.value)
     return CacheValue(rquery, rnames)
 
-def _named(query, params, prefix, suffix):
+def _named(query: str, params: Any, prefix: str, suffix: str) -> CacheValue:
     rquery = []
     rnames = []
     for token in tlexer(query):
@@ -89,29 +100,28 @@ def _named(query, params, prefix, suffix):
             rquery.append(token.value)
     return CacheValue(rquery, rnames)
 
-def _getname(cname):
+def _getname(cname: str) -> str:
     assert cname.startswith(':')
     return cname[1:]
 
-def _getparam(params, name):
+def _getparam(params: Any, name: str) -> Any:
     if isinstance(params, Mapping):
         return params[name]
     else:
         return getattr(params, name)
 
-def _mktuple(rquery, params):
-    return (''.join(rquery), params)
-
-def _to_list(accum, params, name):
+def _to_list(accum: MutableSequence[Any], params: Any, name: str) -> None:
     accum.append(_getparam(params, name))
 
-def _to_dict(accum, params, name):
+def _to_dict(accum: MutableMapping[str, Any], params: Any, name: str) -> None:
     if name not in accum:
         accum[name] = _getparam(params, name)
 
-# XXX - Can only be defined after all internal functions are fully defined.
+# Can only be defined after all internal functions are fully defined.
 
-_APPENDERS = {
+type Appender = Callable[[MutableSequence[Any], Any, str], None] | Callable[[MutableMapping[str, Any], Any, str], None]
+
+_APPENDERS: Mapping[str, Appender] = {
     'qmark': _to_list,
     'format': _to_list,
     'numeric': _to_list,
@@ -119,7 +129,9 @@ _APPENDERS = {
     'pyformat': _to_dict
 }
 
-_CONVERTERS = {
+type Converter = Callable[[str, Params], CacheValue]
+
+_CONVERTERS: Mapping[str, Converter] = {
     'qmark': lambda q, p: _positional(q, p, '?'),
     'format': lambda q, p: _positional(q, p, '%s'),
     'numeric': _numeric,
