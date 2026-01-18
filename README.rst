@@ -1,6 +1,6 @@
-#################################
-abnORMal: A Different Sort of ORM
-#################################
+######################
+abnORMal: The Anti-ORM
+######################
 
 Is it an ORM at all? Maybe I should call it an anti-ORM, because it differs
 so much from any ORM I have used, with the possible exception of
@@ -8,13 +8,23 @@ so much from any ORM I have used, with the possible exception of
 Regardless of what you want to call it, abnORMal is designed to ease the job
 of moving data between the Python world and the SQL database world.
 
+This module is very much in the same spirit as the
+`SQLX <https://github.com/jmoiron/sqlx>`_
+library for the Go programming language, which I became aware of partway
+through writing this package. That package's author falls short of
+calling his package an ORM, saying it merely focuses on data marshalling
+and unmarshalling, so I guess that's probably the best way to describe
+this package.
+
+I have long disliked both ORM's (which, contrary to the claims their
+advocates make require *a lot* of boilerplate in my experience, and at
+any rate lack most of the power and flexibility of SQL), and raw database
+connections (which require their own set of tedious work to retrieve
+and send data).
+
 This package is designed to work with Python 3.11 or higher and any database
 for which a `PEP 249 <https://peps.python.org/pep-0249/>`_ compliant
-database interface exists. It requires
-`PLY (Python Lex Yacc) <http://www.dabeaz.com/ply/>`_ as a prerequisite.
-
-This is very much a work in progress, and this is a rudimentary README that
-will be replaced with a better one some time soon.
+database interface exists. It does not itself have any prerequisites.
 
 Principles
 ==========
@@ -26,9 +36,14 @@ Principles
 * Objects, however, can be useful for caching relational data and
   thereby reducing database load.
 * Don't go after a fly with a sledgehammer.
+* Do automate repetitive tasks.
+* Avoid making the programmer stutter.
 
 A Few Examples
 ==============
+
+The package's features are mostly described in this section. More comprehensive
+API documentation is coming soon.
 
 These examples all assume a database containing the following ``suppliers`` table:
 
@@ -132,7 +147,6 @@ Extraction of multiple results is done via the ``into`` generator::
 Using Parameterized Queries
 ---------------------------
 
-
 No matter what query paramstyle the PEP 249 connector uses, abnORMal always
 uses the *named* one, so as to smooth out the differences between the various
 connectors::
@@ -150,13 +164,60 @@ abnORMal to read from local variables::
         curs = conn.cursor()
         return list(curs.execute("select name from suppliers where city = :city", locals()).into(scalar))
 
-Of course, we can read parameters from object attributes as well. Assuming the ``Supplier`` dataclass::
+Of course, we can read parameters from object attributes as well.
+Assuming the ``Supplier`` dataclass::
 
     from abnormal import scalar
     def get_others(supplier):
         curs = conn.cursor()
         return list(curs.execute("select name from suppliers where city = :city and sno <> :sno", supplier).into(scalar))
 
-Abnormal is smart enough to know the basics of SQL syntax, and won't be fooled by things like the following (which will set the supplier name to ':name').
+Abnormal is smart enough to know the basics of SQL syntax, and won't be
+fooled by things like the following (which will set the supplier name
+literally to ":name")::
 
     curs.execute("update suppliers set name = ':name' where id = 'S5'", locals())
+
+Inserts and Updates
+-------------------
+
+These can lead to what software engineers sometimes call "stuttering,"
+the presence of repetitive identifiers in code. The classic one often
+comes up when declaring a new object variable in Java::
+
+    Connection connection = new Connection();
+
+With abnORMal, stuttering commonly can rear its head when inserting
+or updating::
+
+    conn.execute("insert into suppliers (sno, name, status, city) values (:sno, :name, :status, :city)", locals())
+    conn.execute("update suppliers set name = :name, status = :status, city = :city where sno = :sno", locals())
+
+Thanks to the ``insert_into`` and ``update`` methods, this awkwardness and
+verbosity is not necessary::
+
+    conn.insert_into("suppliers").from_source(locals())
+    conn.update("suppliers").from_source(locals())
+
+With both convenience methods, column names are matched up to attribute
+or key names (case insensitively, if need be); the match must be
+non-ambiguous (e.g. if the data source contains both ``sno`` and
+``SNO``, the match will fail). The information in the database's own
+internal schema is be used to accomplish this.
+
+Rows to update are located by primary key, so all primary key fields
+must have a corresponding item in the data source, else
+``IncompleteDataError`` will be raised.  Note that it is *not* mandatory
+for all (or even any) primary key fields to be defined in the data
+source when inserting. This is because such fields often have defaults
+to defined in the schema (if they don't, you will get an error from the
+database itself).
+
+It is possible to filter out or select specific fields to update or insert,
+using the ``exclude`` and ``include`` methods respectively::
+
+    conn.insert_into("suppliers").excluding("city, status").from_source(locals())
+    conn.update("suppliers").including("sno", "status", "city").from_source(locals())
+
+Note that you may use ``including`` or ``excluding`` but not specify both
+at once.
