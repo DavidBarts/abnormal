@@ -38,7 +38,7 @@ class ProgrammingError(DatabaseError):
 class NotSupportedError(DatabaseError):
     pass
 
-class Connection(ConnectionBase):
+class Connection:
     def close(self) -> None:
         _log_use("connection close")
 
@@ -52,14 +52,14 @@ class Connection(ConnectionBase):
         _log_use("connection cursor")
         return Cursor()
 
-class Cursor(CursorBase):
+class Cursor:
     def __init__(self):
         _log_use("cursor __init__")
         self.rowcount = -1
         self.arraysize = 1
 
     @property
-    def description(self) -> -> Sequence[Sequence[str, type, Optional[int], Optional[int], Optional[int], Optional[bool]]]:
+    def description(self) -> Sequence[Sequence[str, type, Optional[int], Optional[int], Optional[int], Optional[bool]]]:
         return RESULTS.description.pop()
 
     def callproc(self, procname: str, parameters: Sequence) -> Sequence:
