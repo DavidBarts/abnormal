@@ -1,0 +1,2 @@
+# This package has no requirements; this file is here merely to make
+# tools that expect it happy.

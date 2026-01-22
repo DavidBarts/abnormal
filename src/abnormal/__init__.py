@@ -8,7 +8,7 @@ from types import ModuleType as _ModuleType
 
 from .base import ConnectionBase as _ConnectionBase, CursorBase as _CursorBase, Target as _Target, PendingOperationBase as _PendingOperationBase
 from .driver import driver_for as _driver_for, Driver
-from .exceptions import Error, UnexpectedResultError, SqlError, IncompleteDataError
+from .exceptions import Error, IncompleteDataError, InterfaceError, InvalidStateError, SqlError, UnexpectedResultError
 from .misc import Namespace
 from .pending import InsertOperation, UpdateOperation
 from .todb import QueryConverter as _QueryConverter

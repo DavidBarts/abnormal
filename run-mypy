@@ -1,0 +1,15 @@
+#!/bin/sh
+# XXX - because mypy is broken and randomly fails to honor config files
+
+myname=`basename $0`
+here=`pwd`
+
+if [ ! -d src ]
+then
+    1>&2 echo "$myname: src directory not found"
+    exit 2
+fi
+export MYPYPATH="$here/src"
+
+mypy --warn-redundant-casts --warn-unused-ignores --warn-unreachable \
+     -m abnormal
