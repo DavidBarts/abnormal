@@ -38,11 +38,7 @@ name = "abnormal"
 
 [tool.flit.sdist]
 include = [
-    "docs/",
-    "examples/",
-    "tests/",
-    "CHANGES.rst",
-    "uv.lock"
+    "docs/"
 ]
 exclude = [
     "docs/_build/",
